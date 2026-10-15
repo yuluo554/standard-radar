@@ -5,7 +5,7 @@
     snapshot  将本轮条目集持久化为一个快照轮次（已转正 M3）
     diff      计算最近两轮快照的字段级变更（新增/字段变更/消失）（已转正 M3）
     parse     解析标准号并给出版本序列（已转正 M3）
-    report    生成中文日报（Markdown/HTML）（M4）
+    report    生成中文日报（Markdown/HTML）（已转正 M4）
     run       全链路一条命令：抓取 → 快照 → diff → 日报（M5）
     selftest  环境自检（骨架期已可用）
 
@@ -340,6 +340,71 @@ def cmd_parse(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def cmd_report(args: argparse.Namespace) -> int:
+    """中文日报（M4 转正）：事件流 + 最近快照 → 中间报表模型 → MD/HTML（单一渲染源）。
+
+    - 事件来源：store/events/events.jsonl（append-only，diff 产出）；
+    - 条目来源：最近快照轮（每条必带字段取快照原文，缺 → pending）；
+    - --subscriptions FILE：关键词订阅过滤（样例形态 data/subscriptions.example.json）；
+      文件不存在按不过滤处理；命中规则见 subscribe.py（规则坏显式 exit 1）；
+    - 输出 <out>/standard-report.<md|html>（默认 ./reports；覆盖写，日报是终态产物）；
+    - HTML 零外链内联样式（断网可开）；免责声明页脚（DISCLAIMER 常量）；
+    - 倒计时分组消费 states.soon_bucket（today 注入 date.today()，阈值 SOON_DAYS_DEFAULT）。
+    """
+    from datetime import date
+
+    from . import report as report_mod
+    from . import snapshot as snap
+    from . import subscribe as subscribe_mod
+
+    store = _store_path(args)
+    try:
+        all_rounds = snap.load_rounds(store)
+    except snap.SnapshotError as exc:
+        print("%s" % exc, file=sys.stderr)
+        return EXIT_FAIL
+    if not all_rounds:
+        print("store/snapshots/ 下没有快照轮次；先运行 snapshot。", file=sys.stderr)
+        return EXIT_FAIL
+    latest_id, latest_entries = all_rounds[-1]
+    entries_by_id = snap.entries_by_id(latest_entries)
+
+    events = snap.read_events(store)
+    if args.subscriptions:
+        try:
+            rules = subscribe_mod.load_rules(args.subscriptions)
+        except subscribe_mod.RuleError as exc:
+            print("%s" % exc, file=sys.stderr)
+            return EXIT_FAIL
+        if rules is not None:
+            filtered = []
+            for ev in events:
+                entry = entries_by_id.get(ev.get("std_id", ""))
+                if entry is not None:
+                    if subscribe_mod.match_entry(entry, rules) is not None:
+                        filtered.append(ev)
+                elif any(k in (ev.get("std_code") or "") for g in rules["groups"]
+                         for k in g["keywords"]):
+                    filtered.append(ev)
+            events = filtered
+            print("[report] 订阅过滤：%d 组规则，事件 %d 条命中。" % (len(rules["groups"]), len(events)))
+
+    model = report_mod.build_report_model(events, entries_by_id, today=date.today())
+    out_dir = Path(args.out) if args.out else Path("reports")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    formats = ["md", "html"] if args.format == "both" else [args.format]
+    for fmt in formats:
+        text = (report_mod.render_markdown(model) if fmt == "md"
+                else report_mod.render_html(model))
+        path = out_dir / ("standard-report." + fmt)
+        path.write_text(text, encoding="utf-8")
+        print("[report] %s -> %s" % (fmt, path))
+    print("[report] 分组：新增 %d / 倒计时 %d / 状态迁移 %d / 字段变更 %d / 消失 %d（快照轮 %s）" % (
+        len(model["new_items"]), len(model["countdown_items"]), len(model["transitions"]),
+        len(model["field_changes"]), len(model["disappeared"]), latest_id))
+    return EXIT_OK
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="standard-radar",
@@ -381,11 +446,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("stdnos", nargs="+", metavar="标准号")
     p.set_defaults(handler=cmd_parse)
 
-    p = sub.add_parser("report", parents=[common], help="生成中文日报（M4 交付）")
+    p = sub.add_parser("report", parents=[common], help="生成中文日报（已转正 M4）")
     p.add_argument("--format", choices=["md", "html", "both"], default="md")
     p.add_argument("--out", metavar="DIR", default=None, help="输出目录（默认 ./reports）")
-    p.add_argument("--subscriptions", metavar="FILE", default=None, help="订阅规则文件（JSON）")
-    p.set_defaults(handler=_stub("report", "M4"))
+    p.add_argument("--subscriptions", metavar="FILE", default=None, help="订阅规则文件（JSON；样例 data/subscriptions.example.json）")
+    p.set_defaults(handler=cmd_report)
 
     p = sub.add_parser("run", parents=[common], help="全链路：抓取→快照→diff→日报（M5 交付）")
     p.add_argument("--source", choices=["gb", "hb", "both"], default="both")

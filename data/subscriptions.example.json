@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "_note": "订阅规则样例（假词，仅供形态参考；真实订阅文件 subscriptions.json 不入库，见 .gitignore）。命中规则：名称/标准号含任一 keywords 子串且不含任一 exclude 子串。",
+  "groups": [
+    {
+      "name": "示例方向A",
+      "keywords": ["示例词甲", "示例词乙"],
+      "exclude": ["示例排除词"]
+    },
+    {
+      "name": "示例方向B",
+      "keywords": ["样例术语"]
+    }
+  ]
+}

@@ -58,12 +58,9 @@ def test_base_constants_anchored():
         assert isinstance(reason, str) and reason
 
 
-def test_stub_modules_expose_contract_and_notimplemented():
-    """M4 桩模块：契约 docstring 在位、主函数显式 NotImplementedError（防假实现/空实现混淆）。
-
-    M3 已转正（snapshot/diffing/stdno/states 有真实实现，不再入桩断言；
-    其行为用例见 test_m3_pipeline.py / test_stdno.py / test_truth_reproduction.py）。
-    """
+def test_m4_modules_promoted_have_contract():
+    """M4 已转正（subscribe/report 有真实实现，不再入桩断言；
+    其行为用例见 test_m4_subscribe_report.py / test_cli_contract.py report 用例）。"""
     from standard_radar import report, subscribe
 
     for mod_name in ("subscribe", "report"):
@@ -72,17 +69,14 @@ def test_stub_modules_expose_contract_and_notimplemented():
     for fn in (
         subscribe.load_rules,
         subscribe.match_entry,
+        subscribe.filter_entries,
         report.build_report_model,
         report.render_markdown,
         report.render_html,
     ):
-        assert inspect.isfunction(fn)
-        try:
-            fn()
-        except NotImplementedError:
-            pass
-        else:
-            raise AssertionError("桩函数未按约定抛 NotImplementedError: %r" % (fn,))
+        assert callable(fn)
+    # 免责声明常量在位（一处定义；两渲染器共用）
+    assert report.DISCLAIMER and "原文为准" in report.DISCLAIMER
 
 
 def test_debounce_constant_documented():

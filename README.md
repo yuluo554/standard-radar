@@ -12,8 +12,29 @@
 - **快照 diff 变更检测**（M3，招牌）：新增 / 字段变更 / 消失三类事件，字段级比较（非整条哈希），消失去抖防网络抖动误报；
 - **标准号版本归并**（M3）：`GB/T 48222-2026`、`MH/T 1090—2026` 等写法归一，同前缀版本序列；
 - **状态迁移与倒计时**（M3）：`即将实施 → 现行 → …` 迁移事件；"即将实施"按实施日倒计时预警；
-- **关键词订阅 + 中文日报**（M4）：规则文件本地可版本管理；Markdown / HTML 双格式（同一渲染源）；
+- **关键词订阅 + 中文日报**（M4）：规则文件本地可版本管理（样例 `data/subscriptions.example.json`，真实 `subscriptions.json` 不入库）；Markdown / HTML 双格式（同一渲染源，结构一致是机制保证）；HTML 零外链断网可开；页脚固定免责声明；
 - **一条命令全链路**（M5）：抓取 → 快照 → diff → 日报。
+
+## 真值基准（M4 转正，一条命令可复现）
+
+```bash
+py -3.8 -X utf8 tools/benchmark.py            # 打印指标（人读表格）
+py -3.8 -X utf8 tools/benchmark.py --json     # 机读 JSON
+py -3.8 -X utf8 tools/benchmark.py --check    # 守门：检出率 100% 且误报 0，否则 exit 1
+```
+
+**实测指标（2026-10-15，源码态；复现命令即上）**——受控样本：16 条目 / 4 场景 / 17 期望事件（`data/fixtures/truth-radar-v1.json`，输入冻结于 `data/snapshots/pairs/rounds/`，sha256 台账管辖）：
+
+| 事件类型 | 期望 | 命中 | 检出率 | 误报 |
+|---|---|---|---|---|
+| new | 5 | 5 | 100% | 0 |
+| field_changed | 8 | 8 | 100% | 0 |
+| disappeared | 4 | 4 | 100% | 0 |
+| **汇总** | **17** | **17** | **100%** | **0** |
+
+> 诚实口径：以上是该受控样本上引擎复现的结论，**非穷举承诺**（样本合成、场景设计见
+> [data/README.md](data/README.md) §四/§五）；跨轮去抖口径声明见 data/README.md §七。
+> 指标算法单一出处：`standard_radar/benchmark.py`（与 tests/test_truth_reproduction.py 同口径）。
 
 ## 设计要点
 
@@ -29,7 +50,8 @@
 python -m standard_radar selftest     # 环境自检（当前骨架期已可用）
 ```
 
-> 功能命令（fetch / snapshot / diff / parse / report / run）在对应里程碑交付前会显式提示"尚未实现"（退出码 3），不会静默失败。命令面规划见 [plan/02-开发计划与代码骨架.md](plan/02-开发计划与代码骨架.md) §七。
+> `run` 命令（全链路一条命令）在 M5 交付前会显式提示"尚未实现"（退出码 3），不会静默失败。
+> 已交付命令（fetch / snapshot / diff / parse / report）用法见 [plan/02-开发计划与代码骨架.md](plan/02-开发计划与代码骨架.md) §七。
 
 ## 合规与免责
 
