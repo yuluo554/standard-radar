@@ -20,8 +20,11 @@
   R2→R3（disappeared 2，去抖确认）/ 跨轮 R1→R3 并集口径）；阴性用例（S01-S04 三轮一致不报、
   S40-S42 pending 侧不误报、S12 缺 1 轮不报）与去抖用例（S20/S21 两轮缺失报）全在位；
 - **确定性守门**：`--check` 位级一致在 `py -3.8` 与 `py -3.12` 双通道各自通过（跨解释器确定性实测）；
-- **台账**：`data/assets-ledger.csv`（14 资产）+ `tools/verify_ledger.py` 复算一致；
+- 台账：`data/assets-ledger.csv`（14 资产）+ `tools/verify_ledger.py` 复算一致；
   变异验证：篡改台账 1 字符 → 校验红 exit 1；重建后恢复一致；
+- **克隆复算（-text 生效实证）**：commit 后 git clone 到临时目录 → 台账复算一致 + `--check`
+  位级一致 + clone 内 pytest 42 passed；期间发现根 `.gitignore` 的 `snapshots/` 规则把
+  `data/snapshots/**` 排除在库外的缺口，已锚定 `/snapshots/` 修复并补入库（两个 commit 完成收尾）；
 - **测试全绿（双解释器，收尾复跑实测）**：
   - `py -3.8 -X utf8 -m pytest` → **42 passed, 1 skipped**；
   - `py -3.12 -X utf8 -m pytest` → **41 passed, 2 skipped**；
@@ -106,5 +109,8 @@ git status --short && git add -A && git commit -m "抓取：…"
   测试 + 双通路冒烟 + 变异验证；缺口 = 未验证 ubuntu runner 环境；
 - 活网捕获为 2026-10-15 单日实测（6 次请求）："无频率限制"不作硬承诺，M2 实现仍须限频；
 - 真值基准是受控样本上的规则验证（16 条目 / 4 场景），非穷举；检出率/误报率口径 M4 基准 README 落位；
-- 克隆检出复算 `-text` 生效：M1 收尾 commit 后已做（clone 到临时目录 → verify_ledger 通过，
-  结果记录于本文件 §一收尾提交说明与 plan/00 状态行）。
+- 克隆检出复算 `-text` 生效：M1 收尾 commit 后已实测（git clone 到临时目录 → `verify_ledger.py`
+  14 资产一致 + `gen_snapshot_pairs.py --check` 位级一致 + clone 内 pytest 42 passed）；
+  过程中发现并修复一个入库缺口：根 `.gitignore` 的 `snapshots/` 规则曾把 `data/snapshots/**` 整体
+  排除在库外（首 commit 台账在、快照件不在），已锚定为 `/snapshots/` 后入库——**M2 检查 clone 完整性
+  时先跑台账校验再下结论**（此坑实录，防同类静默缺口）。
