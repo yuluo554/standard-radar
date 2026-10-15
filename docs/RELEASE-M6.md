@@ -10,6 +10,10 @@
 - CI 首跑：run id **38742089253**，conclusion=**success**，四矩阵
   （ubuntu-22.04 / windows-latest × py3.8 / py3.12）逐 job 全 success，耗时 1m8s；
 - 对账：`gh run list` push 数 = run 数 = 1（push main 1 次 ↔ ci push 事件 1 条，逐条配对）；
+  **终态补记（收尾提交时点）**：3 次 push（main 349ef90 / tag v1.0.0 / main 收尾 a93118b）
+  ↔ 3 条 ci run（38742089253 / 38742787252 / 38743953523）逐条全 success——tag push 同样
+  触发 push 工作流（tag 指向的提交已在 main 上绿过）；本文档自身提交再触发的 run 属发布
+  后续运转，对账口径恒为 push 数 = run 数逐条配对，实时以 `gh run list` 为准；
 - tag：`v1.0.0`（annotated，打在 CI 绿的同一提交 349ef90 上）；
 - Release：https://github.com/yuluo554/standard-radar/releases/tag/v1.0.0
   （附件 standard-report.md 44716 B + standard-report.html 63938 B，
@@ -39,8 +43,8 @@ docs、src、tests、tools、CI 配置）。
 - [x] 建仓 `yuluo554/standard-radar`（public）+ push main（349ef90）；
 - [x] CI 四矩阵首跑全绿：run 38742089253，success，1m8s（真实 run id 已补记 plan/00
       诚实口径尾注与里程碑表）；
-- [x] `gh run list` 对账：push 数 = run 数 = 1（main push ↔ ci push 事件逐条配对；
-      tag push 不触发 push 事件工作流，符合 `on: push/pull_request` 配置口径）；
+- [x] `gh run list` 对账：push 数 = run 数逐条配对（首推时点 1=1；终态 3 push ↔ 3 run 全
+      success，见 §〇 终态补记）；
 - [x] git tag `v1.0.0` 打在 CI 绿提交（349ef90）+ GitHub Release 附样例日报
       （MD+HTML 双格式）+ `gh release view` 核验资产在位（本文 §〇）；
 - [x] 发布留档三件套（本文 §一/§二/§三合一）；

@@ -76,8 +76,8 @@
 - **CI 已接远端并首跑全绿**：run id **38742089253**（2026-10-15，提交 349ef90，
   github.com/yuluo554/standard-radar），四矩阵 ubuntu-22.04 + windows-latest ×
   3.8 + 3.12 逐 job success；M0–M5 期间"本地等价校验"口径自此闭合；
-  `gh run list` 对账 push 数 = run 数 = 1（tag push 不触发 push 工作流，符合
-  `on: push/pull_request` 配置）；CI 未覆盖 ubuntu-24.04 等其他 runner 环境
+  `gh run list` 对账 push 数 = run 数逐条配对（首推 1=1；终态 3 push ↔ 3 run 全 success，
+  tag push 亦触发 push 工作流——实测口径见 docs/RELEASE-M6.md §〇终态补记）；CI 未覆盖 ubuntu-24.04 等其他 runner 环境
   （矩阵按 plan/02 定稿口径执行，不扩）；
 - **Release 附件为离线受控样本日报**（由预置快照对 R1 经 snapshot→diff→report
   生成，合成样本口径同 data/README §五；MD+HTML 双格式，HTML 零外链），
