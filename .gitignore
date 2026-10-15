@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Project: snapshots (本地产物，不入库)
+# snapshots/ 存放每轮抓取的原始 JSON 快照与 diff 报告：
+# 体积随轮次增长且可从数据源重建，故不入版本库；
+# 但 data/ 下的「预置快照对」真值样本必须入库（用于基准复现）。
+snapshots/
+reports/
+cache/
+_private/
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+
+# Unit test / coverage
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.pytest_cache/
+.ruff_cache/
+nosetests.xml
+coverage.xml
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# 订阅规则（含个人关注词，私有）
+subscribe.yaml
