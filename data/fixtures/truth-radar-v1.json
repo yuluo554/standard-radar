@@ -1,0 +1,154 @@
+{
+  "schema_version": 1,
+  "sample_note": "快照样本：确定性合成数据（受控真值基准输入；禁 stdlib random/系统时钟），非真实标准",
+  "truth_id": "truth-radar-v1",
+  "rounds_dir": "data/snapshots/pairs/rounds",
+  "input_refs": [
+    "rounds/R1.json",
+    "rounds/R2.json",
+    "rounds/R3.json"
+  ],
+  "event_types": [
+    "new",
+    "field_changed",
+    "disappeared"
+  ],
+  "debounce": 2,
+  "first_round_baseline": true,
+  "scenarios": [
+    {
+      "scenario": "baseline-no-events",
+      "description": "首轮只建立基线：R1 的全部条目不产生任何事件（K4 用例锁死）",
+      "rounds": [
+        "R1"
+      ],
+      "expected_events": [],
+      "notes": "若引擎在首轮报出任何 new 事件 = 违反首轮基线纪律，本用例红。"
+    },
+    {
+      "scenario": "r1-to-r2",
+      "description": "R1→R2：new（S10/S11/S12）+ field_changed（S30 state、S31 act_date、S32 std_code、S33 name_cn）+ 阴性（S01-S04 不报；S20/S21 缺失 1 轮不报 disappeared；S40-S42 pending 侧变化不报）",
+      "rounds": [
+        "R1",
+        "R2"
+      ],
+      "expected_events": [
+        {
+          "event": "new",
+          "std_id": "S10"
+        },
+        {
+          "event": "new",
+          "std_id": "S11"
+        },
+        {
+          "event": "new",
+          "std_id": "S12"
+        },
+        {
+          "event": "field_changed",
+          "std_id": "S30",
+          "field": "state",
+          "old_value": "即将实施",
+          "new_value": "现行"
+        },
+        {
+          "event": "field_changed",
+          "std_id": "S31",
+          "field": "act_date",
+          "old_value": "2026-12-01",
+          "new_value": "2027-02-01"
+        },
+        {
+          "event": "field_changed",
+          "std_id": "S32",
+          "field": "std_code",
+          "old_value": "GB/T 30032-2020",
+          "new_value": "GB/T 30032-2025"
+        },
+        {
+          "event": "field_changed",
+          "std_id": "S33",
+          "field": "name_cn",
+          "old_value": "合成样本：名称调整前条目",
+          "new_value": "合成样本：名称调整后条目"
+        }
+      ],
+      "notes": "S20/S21 于 R2 起缺失第 1 轮 → 去抖未满，不得报 disappeared；S12 在 R2 进场报 new 后，R3 缺 1 轮同样不报。"
+    },
+    {
+      "scenario": "r2-to-r3",
+      "description": "R2→R3：disappeared（S20/S21 缺失满 2 轮，去抖确认）+ 阴性（new 不再重报 S10/S11；S12 缺失 1 轮不报；其余字段无变化不报）",
+      "rounds": [
+        "R2",
+        "R3"
+      ],
+      "expected_events": [
+        {
+          "event": "disappeared",
+          "std_id": "S20"
+        },
+        {
+          "event": "disappeared",
+          "std_id": "S21"
+        }
+      ],
+      "notes": "S10/S11 在 R2 已报 new，R2→R3 无变化不得重报；S12 缺失第 1 轮 → 去抖未满不报。"
+    },
+    {
+      "scenario": "r1-to-r3-span",
+      "description": "跨轮对比 R1→R3（事件为 r1-to-r2 与 r2-to-r3 的并集；验证多轮时间线聚合口径）",
+      "rounds": [
+        "R1",
+        "R3"
+      ],
+      "expected_events": [
+        {
+          "event": "new",
+          "std_id": "S10"
+        },
+        {
+          "event": "new",
+          "std_id": "S11"
+        },
+        {
+          "event": "field_changed",
+          "std_id": "S30",
+          "field": "state",
+          "old_value": "即将实施",
+          "new_value": "现行"
+        },
+        {
+          "event": "field_changed",
+          "std_id": "S31",
+          "field": "act_date",
+          "old_value": "2026-12-01",
+          "new_value": "2027-02-01"
+        },
+        {
+          "event": "field_changed",
+          "std_id": "S32",
+          "field": "std_code",
+          "old_value": "GB/T 30032-2020",
+          "new_value": "GB/T 30032-2025"
+        },
+        {
+          "event": "field_changed",
+          "std_id": "S33",
+          "field": "name_cn",
+          "old_value": "合成样本：名称调整前条目",
+          "new_value": "合成样本：名称调整后条目"
+        },
+        {
+          "event": "disappeared",
+          "std_id": "S20"
+        },
+        {
+          "event": "disappeared",
+          "std_id": "S21"
+        }
+      ],
+      "notes": "跨轮口径：S12（只存在于 R2）在 R1→R3 对比中两侧皆无（R1 缺席、R3 缺失）→ 不出现任何事件；去抖跨轮如何计数由 M3 定稿并在基准 README 声明。"
+    }
+  ]
+}

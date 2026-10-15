@@ -1,0 +1,15 @@
+path,sha256,bytes,origin,origin_date,note
+snapshots/pairs/pair/R1-R2-R3.json,17e9235b17d61f64cada8225b8826ea4df08a755030b725ee58347d4c72c4f11,470,gen_snapshot_pairs.py（确定性合成；--check 位级一致守门）,2026-10-15,受控真值基准输入（快照样本，非真实标准）
+snapshots/pairs/pair/R1-R2.json,b16dc03f6527a0062253636b436a99c80133d56b65723c25efff9bbde0382da5,285,gen_snapshot_pairs.py（确定性合成；--check 位级一致守门）,2026-10-15,受控真值基准输入（快照样本，非真实标准）
+snapshots/pairs/rounds/R1.json,c949c3ef18a5e89c9c6ea6f30a4f7c910fb53f84030ab596cb781559c0179e9e,4529,gen_snapshot_pairs.py（确定性合成；--check 位级一致守门）,2026-10-15,受控真值基准输入（快照样本，非真实标准）
+snapshots/pairs/rounds/R2.json,dcf6f62c4f1fdbe42bb80df2a388dcfd80a396ec2ed52de48f073741a149a003,4910,gen_snapshot_pairs.py（确定性合成；--check 位级一致守门）,2026-10-15,受控真值基准输入（快照样本，非真实标准）
+snapshots/pairs/rounds/R3.json,9313aba417ce23532d6b608c1e158c3aa04db7e4adf59a356a9a13160b033833,4584,gen_snapshot_pairs.py（确定性合成；--check 位级一致守门）,2026-10-15,受控真值基准输入（快照样本，非真实标准）
+snapshots/raw/gb/gb-p1.json,87fffa1201ba4047efab68ada1853c4ae22596cdefe00c75d2be009a0af635ee,26949,capture_snapshots.py（活网捕获 2026-10-15；meta 见同名 *.meta.json）,2026-10-15,真实捕获留证（仅元数据；样本非真值基准输入）
+snapshots/raw/gb/gb-p1.meta.json,e3e5a60dcc9b984654c6342b667533cb6a6fcbf04e1cbc019bb4fef846e7955d,993,capture_snapshots.py（活网捕获 2026-10-15；meta 见同名 *.meta.json）,2026-10-15,真实捕获留证（仅元数据；样本非真值基准输入）
+snapshots/raw/gb/gb-p2.json,b681c422ad02831983fb23735de7ab9375797f9306932229f5579658b75991f5,26882,capture_snapshots.py（活网捕获 2026-10-15；meta 见同名 *.meta.json）,2026-10-15,真实捕获留证（仅元数据；样本非真值基准输入）
+snapshots/raw/gb/gb-p2.meta.json,75185c626b4378ab20afbed0b8ffb9db092e810b83572d8118e8e1de8d1fdf7c,993,capture_snapshots.py（活网捕获 2026-10-15；meta 见同名 *.meta.json）,2026-10-15,真实捕获留证（仅元数据；样本非真值基准输入）
+snapshots/raw/hb/hb-p1.json,79d806eb8cff28ef8d05730122d800c4b8a783d48de5df28786ca52923ea51a8,183958,capture_snapshots.py（活网捕获 2026-10-15；meta 见同名 *.meta.json）,2026-10-15,真实捕获留证（仅元数据；样本非真值基准输入）
+snapshots/raw/hb/hb-p1.meta.json,6644614328db01dce9a2cd67dac581f46e3d4eba30837ad7b38d044cde626a9f,991,capture_snapshots.py（活网捕获 2026-10-15；meta 见同名 *.meta.json）,2026-10-15,真实捕获留证（仅元数据；样本非真值基准输入）
+snapshots/raw/hb/hb-p2.json,76c5c112b71390f0936972d3450d73e0ee6894eba09814928dc1eee823879615,224334,capture_snapshots.py（活网捕获 2026-10-15；meta 见同名 *.meta.json）,2026-10-15,真实捕获留证（仅元数据；样本非真值基准输入）
+snapshots/raw/hb/hb-p2.meta.json,36bba5cc1f9becb21f92d7f91938f4e13b708052816c0832d7b4ffe7a59f24c3,991,capture_snapshots.py（活网捕获 2026-10-15；meta 见同名 *.meta.json）,2026-10-15,真实捕获留证（仅元数据；样本非真值基准输入）
+fixtures/truth-radar-v1.json,d32df0fbde5812193db0e2d371d4928cd221daa1aff2bd5f9b743b4cb96ce5a4,4546,gen_snapshot_pairs.py（确定性合成；--check 位级一致守门）,2026-10-15,受控真值基准输入（快照样本，非真实标准）

@@ -1,10 +1,14 @@
-"""统一标准条目模型与事件类型（草案 v0）。
+"""统一标准条目模型与事件类型（**已冻结 v1**，M1 2026-10-15 用真实捕获核对；见 plan/04-数据计划.md）。
 
 - 字段与 plan/01 §二·1 一致：std_id / 标准号 / 中文名称 / 标准性质 / 发布日 / 实施日 / 状态 /
-  归口或主管部门 / 库来源；字段映射表见 plan/02 §六。
+  归口或主管部门 / 库来源；字段映射表见 plan/02 §六（M1 已逐字段核对 400 条真实捕获）。
+- M1 核对结论（2026-10-15，样本 data/snapshots/raw/ 400 条，详见 data/README.md §二）：
+  GB：nature ← STD_NATURE（必有）；dept 无对应字段 → 恒 pending；PROJECT_ID 为整数 → extra 存 str。
+  HB：dept ← CHARGE_DEPT（必有）；nature ← STD_NATURE；C_STD_CODE2..5 为同义写法变体（不入映射，
+  全量留 extra 可回溯）。
 - 纪律：字段值一律取接口原文；未返回或映射不出 → None（输出侧标 PENDING），
   不臆测、不做启发式补全；映射不出的条目整条跳过并记录。
-- 冻结节点：M1 用真实捕获核对字段映射后冻结本文件字段集（见 plan/04-数据计划.md）。
+- 键序冻结：to_dict 固定键序是快照落盘字节稳定承诺（K9）；改字段集/键序 = 重大决策，须过 plan/06。
 """
 
 from __future__ import annotations

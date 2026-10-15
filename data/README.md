@@ -45,6 +45,51 @@
 3. **禁止事项**：不得把推断值冒充标注真值；不得虚构真实标准的发布日期/实施日期；不得凭标准名称臆测其状态或版本关系；
 4. **缓存边界**：仅缓存标准**元数据**（标准号/名称/状态/日期/归口），不下载标准全文、不镜像详情页整页。
 
+## 六、M1 捕获留档与局限勘误（2026-10-15）
+
+### 6.1 捕获记录（tools/capture_snapshots.py，手动活网执行）
+
+| 资产 | 库 | 页 | 参数 | 行数 | 接口 total | HTTP | 耗时 | 字节 | sha256（前 12 位） |
+|---|---|---|---|---|---|---|---|---|---|
+| `snapshots/raw/gb/gb-p1.json` | GB | 1 | pageSize=100&pageNumber=1 | 100 | 79826 | 200 | 0.30s | 26949 | `87fffa1201ba` |
+| `snapshots/raw/gb/gb-p2.json` | GB | 2 | 同上 | 100 | 79826 | 200 | 0.27s | 26882 | `b681c422ad02` |
+| `snapshots/raw/hb/hb-p1.json` | HB | 1 | 同上 | 100 | 119169 | 200 | 0.61s | 183958 | `79d806eb8cff` |
+| `snapshots/raw/hb/hb-p2.json` | HB | 2 | 同上 | 100 | 119169 | 200 | 0.55s | 224334 | `76c5c112b713` |
+
+- 每页配 `*.meta.json`（URL / 参数 / HTTP 状态 / 耗时 / 抓取时间 / sha256 / 计数对账 / 参数回读 / truncated 标记）；sha256 以 raw 字节原样计算；
+- **计数对账**：每页实取 = min(pageSize, total−偏移) 全部相符；两页间 total 一致；
+- **参数回读**：响应回显 `pageNumber` 与请求一致（4/4）；`pageSize` 接口不回显（见 6.2 勘误）；
+- 样本页显式 `truncated=true`（仅取证前 2 页，非全量——取证用途，非运行时全量抓取）；
+- 抓取纪律已执行：UA 自标识（`adapters/base.py` 单一来源）、请求间隔 ≥1s、超时 15s、失败重试 2 次。
+
+### 6.2 局限勘误（对 §一 的补充/修正）
+
+| # | 勘误项 | 实测结论 | 影响 |
+|---|---|---|---|
+| 1 | **接口不回显 `pageSize`** | 响应顶层仅 `total` / `pageNumber` / `rows`（GB/HB 同） | "参数回读"校验仅覆盖 `pageNumber`；pageSize 正确性以计数对账（期望行数=min(pageSize, total−偏移)）间接验证（决策记录 plan/06 M1 节） |
+| 2 | **HB 字段远多于 M0 记录** | 实际 57 键（含 `C_STD_CODE2..5` 写法变体、`STD_NATURE`、`REVISE_STD_CODES` 等稀疏字段） | 映射只取 schema 字段；`C_STD_CODE2..5` 为同义写法变体（`MH/T 1090—2026` / `MH/T1090—2026` / `MHT 1090—2026` 同条并存）→ 佐证 stdno 归一设计；全量键留 raw 可回溯 |
+| 3 | **GB 无归口字段** | GB 行仅有 8 键，无任何归口/主管部门字段 | `StandardEntry.dept` GB 侧恒 pending（schema 冻结时落定，plan/02 §六） |
+| 4 | **接口字段类型非全字符串** | GB `PROJECT_ID` 为 int；HB `_version_`/`OPEN_FLAG` int、`SORT_WEIGHT`/`score` float、`DATA_ALL`/`G_ICS_NAME` 为 list | `extra` 落盘统一转 str（决策记录 plan/06 M1 节）；raw 留证保存原文类型 |
+| 5 | **HB `STATE` 域样本** | 200 条样本：`现行` 38 / `即将实施` 162；GB 样本 200 条全 `即将实施`（默认按发布倒序，最新批次未到实施日） | 状态取值以原文为准（K8）；样本域不构成全集承诺 |
+
+### 6.3 M1 合成数据资产（真值基准输入；非真实标准）
+
+| 资产 | 内容 |
+|---|---|
+| `snapshots/pairs/rounds/R1|R2|R3.json` | 三轮受控快照（13/14/13 条；`kind=synthetic` + `captured_date` 显式常量 2026-11-0x） |
+| `snapshots/pairs/pair/R1-R2.json`、`pair/R1-R2-R3.json` | 快照对/三轮序列视图说明 |
+| `fixtures/truth-radar-v1.json` | 真值标注：4 场景（首轮基线无事件 / R1→R2 / R2→R3 / 跨轮 R1→R3），含 new 3、field_changed 4（state/act_date/std_code/name_cn）、disappeared 2（去抖确认）、阴性（S01-S04 三轮一致不报；S40-S42 pending 侧变化不报；S12 缺 1 轮不报） |
+| `assets-ledger.csv` | 全部冻结资产 sha256 台账（14 项；`tools/verify_ledger.py` 复算） |
+
+合成纪律：标准号一律真实格式占位（`GB/T 30001-2025` / `MH/T 30002—2025` 样式），名称冠"合成样本"前缀；生成器禁 random/禁时钟/禁 set 迭代序；`tools/gen_snapshot_pairs.py --check` 位级一致守门（双解释器实测通过）。**A 类真实捕获不参与真值标注**（plan/04 §五）。
+
+### 6.4 冻结半区与字节稳定验证（M1 实测）
+
+- `.gitattributes`：`data/snapshots/**`、`data/fixtures/**` 均 `-text`（字节冻结，EOL 不归一）；`data/assets-ledger.csv` 为普通 LF 文本（台账本身可 diff 审阅）；
+- 台账复算：`py -3.8 -X utf8 tools/verify_ledger.py` → 14 资产一致（变异验证：篡改台账 1 字符 → 校验红 exit 1；重建后恢复一致）；
+- `--check` 位级一致：`py -3.8` 与 `py -3.12` 双通道各自再生成与落盘逐字节一致（跨解释器确定性实测）；
+- 克隆检出后复算：见 plan/HANDOFF-M2.md 收尾记录（`-text` 在 clone 后生效的直接证据）。
+
 ## 五、数值口径纪律
 
 - **一处定义**：接口总量（GB `79826` / HB `119169`）、关键词命中数（`人工智能` GB 114 / HB 113）、耗时（0.20–0.47s）均为**基准日 2026-10-15 实测快照值**，随平台数据增长必然变化，**仅作数据源可获取性证据，不作交付承诺**；
