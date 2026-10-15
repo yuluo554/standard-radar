@@ -25,6 +25,31 @@ DISCLAIMER = "本报告由本地工具自动生成，变更提醒与倒计时以
 REPORT_VERSION = 1
 
 
+def dedupe_events(events: List[dict]) -> List[dict]:
+    """事件流去重（M5 收口，K16 全序列重放幂等）：按事件恒同键去重，保持首现顺序。
+
+    背景：CLI diff 每次运行都对已存轮次全序列重放并追加进 append-only 事件流，
+    重复运行会把同一 (prev_round, curr_round) 的事件重复落盘（append-only 纪律
+    不改写历史行）。日报消费全量事件流，因此消费侧按事件键去重——同键重复轮次
+    事件只入分组一次，报告内容与 diff 运行次数无关（确定性口径）。
+
+    去重键 = (event, std_id, field, old_value, new_value, prev_round, curr_round)
+    （事件恒同五元组 + 轮次对——同 id 同字段在相邻轮对上的重复追加整行剔除；
+    不同轮对的历史事件保留，时间线不丢信息）。
+    """
+    seen = set()
+    out: List[dict] = []
+    for ev in events:
+        key = (ev.get("event"), ev.get("std_id"), ev.get("field"),
+               ev.get("old_value"), ev.get("new_value"),
+               ev.get("prev_round"), ev.get("curr_round"))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(ev)
+    return out
+
+
 def _fmt(value: Optional[str]) -> str:
     """展示格式化：None → "pending"（PENDING 口径，不臆测）。"""
     if value is None or value == "":
@@ -37,7 +62,8 @@ def build_report_model(events: List[dict], entries_by_id: Dict[str, StandardEntr
     """事件流 × 当前条目 → 中间报表模型（纯函数；渲染器唯一输入）。
 
     events：events_to_dicts 形态的事件列表（new / field_changed / disappeared，
-    含 state_transition——状态迁移单列分组）；
+    含 state_transition——状态迁移单列分组）；消费前先经 dedupe_events 去重
+    （diff 全序列重放追加导致的重复轮次事件只计一次——K16 幂等，M5 收口）；
     entries_by_id：最新快照的条目索引（每条必带字段的来源——只展示快照里实存的原文）；
     today：注入日期（date 或 None；None 时倒计时不判定——纯函数不读系统时钟，
     运行通路 CLI 恒传 date.today()）。
@@ -58,6 +84,8 @@ def build_report_model(events: List[dict], entries_by_id: Dict[str, StandardEntr
     transitions: List[dict] = []
     field_changes: List[dict] = []
     disappeared: List[dict] = []
+
+    events = dedupe_events(events)
 
     def base_of(std_id: str) -> dict:
         entry = entries_by_id.get(std_id)

@@ -6,7 +6,7 @@
     diff      计算最近两轮快照的字段级变更（新增/字段变更/消失）（已转正 M3）
     parse     解析标准号并给出版本序列（已转正 M3）
     report    生成中文日报（Markdown/HTML）（已转正 M4）
-    run       全链路一条命令：抓取 → 快照 → diff → 日报（M5）
+    run       全链路一条命令：抓取 → 快照 → diff → 日报（已转正 M5）
     selftest  环境自检（骨架期已可用）
 
 退出码契约（K2，见 plan/03 §七）：
@@ -343,7 +343,8 @@ def cmd_parse(args: argparse.Namespace) -> int:
 def cmd_report(args: argparse.Namespace) -> int:
     """中文日报（M4 转正）：事件流 + 最近快照 → 中间报表模型 → MD/HTML（单一渲染源）。
 
-    - 事件来源：store/events/events.jsonl（append-only，diff 产出）；
+    - 事件来源：store/events/events.jsonl（append-only，diff 产出）；消费侧按事件键
+      去重（report.dedupe_events，K16 幂等——diff 全序列重放追加的重复轮次事件只计一次）；
     - 条目来源：最近快照轮（每条必带字段取快照原文，缺 → pending）；
     - --subscriptions FILE：关键词订阅过滤（样例形态 data/subscriptions.example.json）；
       文件不存在按不过滤处理；命中规则见 subscribe.py（规则坏显式 exit 1）；
@@ -405,6 +406,45 @@ def cmd_report(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def cmd_run(args: argparse.Namespace) -> int:
+    """全链路一条命令（M5 转正）：fetch → snapshot → diff → report 串行（FR10）。
+
+    - 各阶段复用既有命令处理函数（同一实现，不复制第二份管线逻辑）；
+    - fetch 注入通路：测试经 args.fetch_page_fetcher / args.fetch_sleep_fn 传假页
+      （零网络，与 fetch 命令同接缝）；真实运行两属性缺省 = 真实网络；
+    - 报告阶段：--subscriptions/--format/--out 语义同 report 命令
+      （规则坏 exit 1、文件缺省不过滤；--out 默认 ./reports）；
+    - 重复运行幂等口径：diff 全序列重放追加事件，报告消费侧按事件键去重
+      （report.dedupe_events，K16）——同 store 连跑两轮日报内容稳定。
+    """
+    # snapshot/diff 处理函数读取各自子命令专有属性（--round/--from/--to）；
+    # run parser 不定义这些选项 → 显式补缺省（None = 各自默认通路：最近轮/最近两轮）。
+    for attr in ("round", "from_round", "to_round"):
+        if not hasattr(args, attr):
+            setattr(args, attr, None)
+
+    # 1) fetch（假页注入属性透传；真实运行时两属性不存在 = 真实网络）
+    code = cmd_fetch(args)
+    if code != EXIT_OK:
+        print("[run] fetch 失败，中止（不产出日报）。", file=sys.stderr)
+        return code
+    # 2) snapshot（消费刚落的 fetch 留证：默认最近一轮）
+    code = cmd_snapshot(args)
+    if code != EXIT_OK:
+        print("[run] snapshot 失败，中止（不产出日报）。", file=sys.stderr)
+        return code
+    # 3) diff（首轮基线零事件属正常；事件追加进事件流）
+    code = cmd_diff(args)
+    if code != EXIT_OK:
+        print("[run] diff 失败，中止（不产出日报）。", file=sys.stderr)
+        return code
+    # 4) report（--out/--format/--subscriptions 语义同 report 命令）
+    code = cmd_report(args)
+    if code != EXIT_OK:
+        print("[run] report 失败。", file=sys.stderr)
+    return code
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="standard-radar",
@@ -452,12 +492,16 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--subscriptions", metavar="FILE", default=None, help="订阅规则文件（JSON；样例 data/subscriptions.example.json）")
     p.set_defaults(handler=cmd_report)
 
-    p = sub.add_parser("run", parents=[common], help="全链路：抓取→快照→diff→日报（M5 交付）")
+    p = sub.add_parser("run", parents=[common], help="全链路一条命令：抓取→快照→diff→日报（已转正 M5）")
     p.add_argument("--source", choices=["gb", "hb", "both"], default="both")
+    p.add_argument("--page-size", type=int, default=None, metavar="N",
+                   help="每页条数（默认 %d，一处定义 adapters/base.py）" % _FETCH_PAGE_SIZE)
+    p.add_argument("--max-pages", type=int, default=None, metavar="N",
+                   help="翻页上限（默认 %d，一处定义 adapters/base.py）" % _FETCH_MAX_PAGES)
     p.add_argument("--subscriptions", metavar="FILE", default=None, help="订阅规则文件（JSON）")
     p.add_argument("--format", choices=["md", "html", "both"], default="md")
     p.add_argument("--out", metavar="DIR", default=None, help="输出目录（默认 ./reports）")
-    p.set_defaults(handler=_stub("run", "M5"))
+    p.set_defaults(handler=cmd_run)
 
     p = sub.add_parser("selftest", parents=[common], help="环境自检")
     p.set_defaults(handler=cmd_selftest)

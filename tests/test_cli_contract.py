@@ -20,9 +20,8 @@ from standard_radar.cli import (
 # fetch 已于 M2 转正（离线用例见 test_fetch_offline.py）
 # snapshot/diff/parse 已于 M3 转正（离线用例见 test_m3_pipeline.py / test_stdno.py）
 # report 已于 M4 转正（离线用例见 test_m4_subscribe_report.py 的 CLI 部分）
-STUBS = {
-    "run": "M5",
-}
+# run 已于 M5 转正（端到端离线用例见 test_m5_run.py）——桩表清空
+STUBS = {}
 
 
 def run_main(argv):
@@ -78,7 +77,7 @@ def test_stub_table_covers_all_documented_commands():
     fetch 已于 M2 转正（不在 STUBS，离线用例见 test_fetch_offline.py）。
     """
     documented = {"fetch", "snapshot", "diff", "parse", "report", "run", "selftest"}
-    promoted = {"fetch", "snapshot", "diff", "parse", "report"}  # M2/M3/M4 已转正（离线用例各自文件）
+    promoted = {"fetch", "snapshot", "diff", "parse", "report", "run"}  # M2–M5 已转正
     assert set(STUBS) | {"selftest"} | promoted == documented
 
 

@@ -62,7 +62,7 @@
 | M2 | **抓取**：GB/HB 双源适配器 + 字段映射 + 失败隔离与原因码 + raw JSON 留证 + 限频/robots 合规 | ✅ 2026-10-15（fetch 转正 + round 留证 store/raw/R####/；失败隔离原因码三态 + 两库全败 exit 1；活网实测 data/README.md §六·补；证据见 plan/HANDOFF-M3.md） |
 | M3 | **diff 与解析**：持久快照 + 字段级 diff 三类事件（消失去抖）+ 标准号版本解析归并 + STATE 迁移检测与"即将实施"倒计时 | ✅ 2026-10-15（snapshot/diff/parse 转正；真值复现检出率 100%/误报 0（17/17，双解释器一致）；126 passed + 1 skip × 2 通道；去抖跨轮口径定稿入 data/README §七；证据见 plan/HANDOFF-M4.md） |
 | M4 | **基准**：预置快照对真值基准 + 关键词订阅规则 + 中文 Markdown/HTML 日报生成 | ✅ 2026-10-15（benchmark/subscribe/report 转正 + report 命令转正；基准分事件类型指标入 README（17/17 检出 100%/误报 0）；变异验证三处；153 passed + 1 skip × 2 通道；证据见 plan/HANDOFF-M5.md） |
-| M5 | **交付**：CLI 全链路一条命令产出日报 + 技术报告 + README（指标口径、样例日报） | ⬜ |
+| M5 | **交付**：CLI 全链路一条命令产出日报 + 技术报告 + README（指标口径、样例日报） | ✅ 2026-10-15（run 命令转正（桩表清空）+ 事件流去重收口（K16 幂等：报告内容与 diff 运行次数无关）；技术报告 docs/tech-report.md 落位（字段映射/diff 判定/归并与迁移）；README 终稿（run 用法/退出码语义/样例日报）；端到端离线演示全通（五分组齐/HTML 零外链/免责声明在位）；变异验证新增事件去重一处；159 passed + 2 skipped × 2 通道；证据见 plan/HANDOFF-M6.md） |
 | M6 | **发布**：脱敏审查 → git tag → GitHub 公开仓库（纯净名 `standard-radar`）+ Release 附产物 + 发布留档三件套 | ⬜（**DoD = git tag + GitHub Release 附产物 + 发布留档三件套，发布到 GitHub 公开仓库**） |
 
 ## 里程碑依赖与验收要点
