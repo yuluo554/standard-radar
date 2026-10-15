@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "sample_note": "快照样本：确定性合成数据（受控真值基准输入；禁 stdlib random/系统时钟），非真实标准",
+  "sequence_id": "R1-R2-R3",
+  "rounds": [
+    "R1",
+    "R2",
+    "R3"
+  ],
+  "debounce_note": "去抖用例（MISSING_DEBOUNCE=2）需三轮序列表达：S20/S21 于 R2 起缺失，R3 确认；S12 于 R3 缺失仅 1 轮不报",
+  "entry_count_per_round": {
+    "R1": 13,
+    "R2": 14,
+    "R3": 13
+  }
+}

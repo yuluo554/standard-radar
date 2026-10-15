@@ -1,0 +1,179 @@
+{
+  "schema_version": 1,
+  "sample_note": "快照样本：确定性合成数据（受控真值基准输入；禁 stdlib random/系统时钟），非真实标准",
+  "meta": {
+    "round_id": "R2",
+    "captured_date": "2026-11-02",
+    "kind": "synthetic"
+  },
+  "entries": [
+    {
+      "std_id": "S01",
+      "source_lib": "GB",
+      "std_code": "GB/T 30001-2025",
+      "name_cn": "合成样本：信息安全要求 第1部分",
+      "nature": "推荐性",
+      "issue_date": "2025-06-01",
+      "act_date": "2026-06-01",
+      "state": "现行",
+      "dept": null,
+      "extra": {}
+    },
+    {
+      "std_id": "S02",
+      "source_lib": "HB",
+      "std_code": "MH/T 30002—2025",
+      "name_cn": "合成样本：民航地面服务规范",
+      "nature": "推荐性",
+      "issue_date": "2025-07-10",
+      "act_date": "2026-01-10",
+      "state": "现行",
+      "dept": "中国民用航空局",
+      "extra": {}
+    },
+    {
+      "std_id": "S03",
+      "source_lib": "GB",
+      "std_code": "GB/T 30003-2024",
+      "name_cn": "合成样本：术语与采集方法",
+      "nature": "推荐性",
+      "issue_date": "2024-03-15",
+      "act_date": "2024-10-01",
+      "state": "现行",
+      "dept": null,
+      "extra": {}
+    },
+    {
+      "std_id": "S04",
+      "source_lib": "HB",
+      "std_code": "HB 30004—2023",
+      "name_cn": "合成样本：航空材料试验方法",
+      "nature": null,
+      "issue_date": "2023-05-20",
+      "act_date": "2023-12-01",
+      "state": "现行",
+      "dept": "工业和信息化部",
+      "extra": {}
+    },
+    {
+      "std_id": "S10",
+      "source_lib": "GB",
+      "std_code": "GB/T 30010-2026",
+      "name_cn": "合成样本：人工智能数据标注规范",
+      "nature": "推荐性",
+      "issue_date": "2026-10-20",
+      "act_date": "2027-05-01",
+      "state": "即将实施",
+      "dept": null,
+      "extra": {}
+    },
+    {
+      "std_id": "S11",
+      "source_lib": "HB",
+      "std_code": "MH/T 30011—2026",
+      "name_cn": "合成样本：无人机物流运行要求",
+      "nature": "推荐性",
+      "issue_date": "2026-10-25",
+      "act_date": "2027-06-01",
+      "state": "即将实施",
+      "dept": "中国民用航空局",
+      "extra": {}
+    },
+    {
+      "std_id": "S12",
+      "source_lib": "GB",
+      "std_code": "GB/T 30012-2026",
+      "name_cn": "合成样本：短周期监测试点条目",
+      "nature": "推荐性",
+      "issue_date": "2026-10-28",
+      "act_date": "2027-04-15",
+      "state": "即将实施",
+      "dept": null,
+      "extra": {}
+    },
+    {
+      "std_id": "S30",
+      "source_lib": "GB",
+      "std_code": "GB/T 30030-2025",
+      "name_cn": "合成样本：状态迁移观察条目",
+      "nature": "推荐性",
+      "issue_date": "2025-09-01",
+      "act_date": "2026-03-01",
+      "state": "现行",
+      "dept": null,
+      "extra": {}
+    },
+    {
+      "std_id": "S31",
+      "source_lib": "HB",
+      "std_code": "MH/T 30031—2026",
+      "name_cn": "合成样本：实施日期调整条目",
+      "nature": "推荐性",
+      "issue_date": "2026-08-15",
+      "act_date": "2027-02-01",
+      "state": "即将实施",
+      "dept": "中国民用航空局",
+      "extra": {}
+    },
+    {
+      "std_id": "S32",
+      "source_lib": "GB",
+      "std_code": "GB/T 30032-2025",
+      "name_cn": "合成样本：标准号升版观察条目",
+      "nature": "推荐性",
+      "issue_date": "2025-11-05",
+      "act_date": "2026-06-01",
+      "state": "即将实施",
+      "dept": null,
+      "extra": {}
+    },
+    {
+      "std_id": "S33",
+      "source_lib": "HB",
+      "std_code": "HB 30033—2024",
+      "name_cn": "合成样本：名称调整后条目",
+      "nature": "推荐性",
+      "issue_date": "2024-02-18",
+      "act_date": "2024-09-01",
+      "state": "现行",
+      "dept": "国家药监局",
+      "extra": {}
+    },
+    {
+      "std_id": "S40",
+      "source_lib": "GB",
+      "std_code": "GB/T 30040-2026",
+      "name_cn": "合成样本：实施日缺失观察条目",
+      "nature": "推荐性",
+      "issue_date": "2026-09-10",
+      "act_date": "2027-01-01",
+      "state": "即将实施",
+      "dept": null,
+      "extra": {}
+    },
+    {
+      "std_id": "S41",
+      "source_lib": "HB",
+      "std_code": "HB 30041—2026",
+      "name_cn": "合成样本：性质缺失观察条目",
+      "nature": "推荐性",
+      "issue_date": "2026-09-12",
+      "act_date": "2027-01-15",
+      "state": "即将实施",
+      "dept": "工业和信息化部",
+      "extra": {}
+    },
+    {
+      "std_id": "S42",
+      "source_lib": "HB",
+      "std_code": "HB 30042—2026",
+      "name_cn": "合成样本：归口缺失观察条目",
+      "nature": "推荐性",
+      "issue_date": "2026-09-14",
+      "act_date": "2027-02-15",
+      "state": "即将实施",
+      "dept": "工业和信息化部",
+      "extra": {}
+    }
+  ]
+}

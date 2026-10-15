@@ -1,0 +1,31 @@
+{
+  "asset": "raw-capture",
+  "sample_note": "快照样本：平台列表接口真实捕获页（仅元数据留证；非真值基准输入）",
+  "source_lib": "GB",
+  "url": "https://std.samr.gov.cn/gb/search/gbQueryPage?pageSize=100&pageNumber=1",
+  "params": {
+    "pageSize": 100,
+    "pageNumber": 1
+  },
+  "http_status": 200,
+  "duration_s": 0.301,
+  "captured_at": "2026-10-15T18:58:39+0800",
+  "bytes": 26949,
+  "sha256": "87fffa1201ba4047efab68ada1853c4ae22596cdefe00c75d2be009a0af635ee",
+  "raw_file": "data/snapshots/raw/gb/gb-p1.json",
+  "count_reconciliation": {
+    "api_total": 79826,
+    "fetched_rows": 100,
+    "expected_rows_this_page": 100,
+    "rows_match_expectation": true,
+    "total_consistent_across_pages": true
+  },
+  "truncated": true,
+  "truncated_reason": "sample-capture: 仅取证前 2 页，非全量（total=79826）",
+  "param_echo": {
+    "pageNumber_requested": 1,
+    "pageNumber_echoed": 1,
+    "pageNumber_ok": true,
+    "pageSize_echoed": null
+  }
+}

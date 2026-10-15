@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "sample_note": "快照样本：确定性合成数据（受控真值基准输入；禁 stdlib random/系统时钟），非真实标准",
+  "pair_id": "R1-R2",
+  "rounds": [
+    "R1",
+    "R2"
+  ],
+  "entry_count_per_round": {
+    "R1": 13,
+    "R2": 14
+  }
+}

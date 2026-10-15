@@ -29,9 +29,10 @@ ENV/
 
 # Project: 运行态产物（本地产物，不入库）
 # stdradar_store/ 是 CLI 默认 store（每轮快照/事件流/raw 留证），可从数据源重建，不入库；
-# data/ 下的「预置快照对」真值样本必须入库（用于基准复现，见 data/README.md）。
+# data/snapshots/（捕获留证 + 预置快照对）与 data/fixtures/（真值标注）必须入库
+# （冻结半区，-text + sha256 台账，见 data/README.md 与 plan/04 §二/§三）。
 stdradar_store/
-snapshots/
+/snapshots/
 reports/
 cache/
 _private/
