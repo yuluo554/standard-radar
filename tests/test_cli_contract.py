@@ -18,10 +18,8 @@ from standard_radar.cli import (
 
 # 桩命令登记表：命令 → 目标里程碑（转正时移除对应行 + 补该命令离线用例；见 plan/02 §五）
 # fetch 已于 M2 转正（离线用例见 test_fetch_offline.py）
+# snapshot/diff/parse 已于 M3 转正（离线用例见 test_m3_pipeline.py / test_stdno.py）
 STUBS = {
-    "snapshot": "M3",
-    "diff": "M3",
-    "parse": "M3",
     "report": "M4",
     "run": "M5",
 }
@@ -80,7 +78,8 @@ def test_stub_table_covers_all_documented_commands():
     fetch 已于 M2 转正（不在 STUBS，离线用例见 test_fetch_offline.py）。
     """
     documented = {"fetch", "snapshot", "diff", "parse", "report", "run", "selftest"}
-    assert set(STUBS) | {"selftest", "fetch"} == documented
+    promoted = {"fetch", "snapshot", "diff", "parse"}  # M2/M3 已转正（离线用例各自文件）
+    assert set(STUBS) | {"selftest"} | promoted == documented
 
 
 def test_selftest_ok_in_tmp_store(tmp_path):

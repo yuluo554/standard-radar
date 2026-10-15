@@ -59,23 +59,17 @@ def test_base_constants_anchored():
 
 
 def test_stub_modules_expose_contract_and_notimplemented():
-    """M3/M4 桩模块：契约 docstring 在位、主函数显式 NotImplementedError（防假实现/空实现混淆）。"""
-    import importlib
+    """M4 桩模块：契约 docstring 在位、主函数显式 NotImplementedError（防假实现/空实现混淆）。
 
-    from standard_radar import diffing, report, snapshot, states, stdno, subscribe
+    M3 已转正（snapshot/diffing/stdno/states 有真实实现，不再入桩断言；
+    其行为用例见 test_m3_pipeline.py / test_stdno.py / test_truth_reproduction.py）。
+    """
+    from standard_radar import report, subscribe
 
-    sys_modules = sys.modules
-    for mod_name in ("snapshot", "diffing", "stdno", "states", "subscribe", "report"):
+    for mod_name in ("subscribe", "report"):
         mod = importlib.import_module("standard_radar." + mod_name)
         assert mod.__doc__ and len(mod.__doc__.strip()) > 40, mod_name
     for fn in (
-        snapshot.save_round,
-        snapshot.load_round,
-        diffing.diff_rounds,
-        stdno.parse_stdno,
-        stdno.version_series,
-        states.state_transitions,
-        states.countdown_days,
         subscribe.load_rules,
         subscribe.match_entry,
         report.build_report_model,

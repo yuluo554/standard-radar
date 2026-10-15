@@ -2,9 +2,9 @@
 
 命令面（计划于 M2–M5 逐个由桩转正；见 plan/02 §七、plan/05-里程碑.md）：
     fetch     抓取 GB/HB 双库 → 原始 JSON 留证 + 归一化条目（已转正 M2）
-    snapshot  将本轮条目集持久化为一个快照轮次（M3）
-    diff      计算最近两轮快照的字段级变更（新增/字段变更/消失）（M3）
-    parse     解析标准号并给出版本序列（M3）
+    snapshot  将本轮条目集持久化为一个快照轮次（已转正 M3）
+    diff      计算最近两轮快照的字段级变更（新增/字段变更/消失）（已转正 M3）
+    parse     解析标准号并给出版本序列（已转正 M3）
     report    生成中文日报（Markdown/HTML）（M4）
     run       全链路一条命令：抓取 → 快照 → diff → 日报（M5）
     selftest  环境自检（骨架期已可用）
@@ -190,6 +190,156 @@ def cmd_fetch(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def _store_path(args: argparse.Namespace) -> Path:
+    return Path(args.store) if args.store else Path(DEFAULT_STORE_DIR)
+
+
+def cmd_snapshot(args: argparse.Namespace) -> int:
+    """本轮条目集持久化为快照轮次（M3 转正）。
+
+    条目来源（二选一）：
+    - 默认：读最近一轮 fetch 留证（store/raw/R<最大>/ 的逐页 raw JSON 重新映射）；
+    - --round R####：指定消费某一轮 fetch 留证。
+    快照轮次号 = 来源 fetch 轮次号（raw 与 snapshots 同轮对齐，plan/03 §2.2 M3 定稿）。
+    """
+    import json as _json
+
+    from .adapters import gb as gb_adapter
+    from .adapters import hb as hb_adapter
+    from . import snapshot as snap
+
+    store = _store_path(args)
+    raw_root = store / "raw"
+    if args.round:
+        round_id = args.round
+        round_dir = raw_root / round_id
+    else:
+        rounds = sorted(
+            (p.name for p in raw_root.iterdir() if p.is_dir() and p.name.startswith("R") and p.name[1:].isdigit())
+        ) if raw_root.is_dir() else []
+        if not rounds:
+            print("store/raw/ 下没有 fetch 轮次留证；先运行 fetch。", file=sys.stderr)
+            return EXIT_FAIL
+        round_id = rounds[-1]
+        round_dir = raw_root / round_id
+    if not round_dir.is_dir():
+        print("fetch 留证轮次不存在：%s" % round_dir, file=sys.stderr)
+        return EXIT_FAIL
+
+    adapters = {"gb": gb_adapter, "hb": hb_adapter}
+    entries, skipped = [], 0
+    page_files = sorted(round_dir.glob("<lib>-p<N>.json".replace("<lib>", "*").replace("<N>", "*")))
+    page_files = [p for p in page_files if p.suffix == ".json" and not p.name.endswith(".meta.json")]
+    page_files.sort(key=lambda p: (p.name.split("-p")[0], int(p.name.split("-p")[1].split(".")[0])))
+    if not page_files:
+        print("留证轮次 %s 无页文件（该轮可能两库全失败）。" % round_id, file=sys.stderr)
+        return EXIT_FAIL
+    for page_file in page_files:
+        lib = page_file.name.split("-p")[0]
+        adapter = adapters.get(lib)
+        if adapter is None:
+            print("未知库别留证文件（跳过）：%s" % page_file.name, file=sys.stderr)
+            continue
+        try:
+            data = _json.loads(page_file.read_text(encoding="utf-8"))
+            rows = data["rows"]
+        except Exception as exc:
+            print("留证页不可解析（%s）：%r" % (page_file.name, exc), file=sys.stderr)
+            return EXIT_FAIL
+        for row in rows:
+            entry = adapter.map_entry(row)
+            if entry is None:
+                skipped += 1
+                continue
+            entries.append(entry)
+
+    try:
+        path = snap.save_round(store, round_id, entries, meta={
+            "source": "fetch-evidence",
+            "raw_round": round_id,
+            "page_files": [p.name for p in page_files],
+            "skipped_mapping": skipped,
+        })
+    except snap.SnapshotError as exc:
+        print("%s" % exc, file=sys.stderr)
+        return EXIT_FAIL
+    print("[snapshot] %s: entries=%d skipped_mapping=%d -> %s" % (round_id, len(entries), skipped, path))
+    return EXIT_OK
+
+
+def cmd_diff(args: argparse.Namespace) -> int:
+    """最近两轮（或 --from/--to 指定轮）快照的字段级 diff（M3 转正）。
+
+    - 默认：快照目录里最近两轮（相邻对比，new/field_changed/disappeared 去抖）；
+    - store 里只有一轮：首轮基线形态——不产事件，exit 0（K4，明确提示）；
+    - 事件追加进 events/events.jsonl（append-only）并打印。
+    """
+    from . import snapshot as snap
+    from .diffing import MissingTracker, diff_entries, events_to_dicts
+
+    store = _store_path(args)
+    if bool(args.from_round) != bool(args.to_round):
+        print("--from 与 --to 必须同时给出。", file=sys.stderr)
+        return EXIT_USAGE
+    try:
+        all_rounds = snap.load_rounds(store)
+    except snap.SnapshotError as exc:
+        print("%s" % exc, file=sys.stderr)
+        return EXIT_FAIL
+    if not all_rounds:
+        print("store/snapshots/ 下没有快照轮次；先运行 snapshot。", file=sys.stderr)
+        return EXIT_FAIL
+
+    ids = [rid for rid, _ in all_rounds]
+    if args.from_round or args.to_round:
+        if not (args.from_round and args.to_round):
+            print("--from 与 --to 必须同时给出。", file=sys.stderr)
+            return EXIT_USAGE
+        prev_id, curr_id = args.from_round, args.to_round
+        if prev_id not in ids or curr_id not in ids:
+            print("指定轮次不存在：%s" % (prev_id if prev_id not in ids else curr_id), file=sys.stderr)
+            return EXIT_FAIL
+    else:
+        if len(all_rounds) < 2:
+            print("[diff] 仅一轮快照（%s）：首轮建立基线，不产生事件（K4）。" % ids[0])
+            return EXIT_OK
+        prev_id, curr_id = ids[-2], ids[-1]
+    prev_entries = dict((rid, ents) for rid, ents in all_rounds)[prev_id]
+    curr_entries = dict((rid, ents) for rid, ents in all_rounds)[curr_id]
+
+    events = diff_entries(
+        snap.entries_by_id(prev_entries), snap.entries_by_id(curr_entries),
+        prev_round=prev_id, curr_round=curr_id,
+        with_new=True, tracker=MissingTracker(),
+    )
+    rows = events_to_dicts(events)
+    appended = snap.append_events(store, rows)
+    for row in rows:
+        if row["event"] == "field_changed":
+            print("[diff] %s %s %s: %s -> %s" % (
+                row["event"], row["std_id"], row["field"], row["old_value"], row["new_value"]))
+        else:
+            print("[diff] %s %s (%s)" % (row["event"], row["std_id"], row["source_lib"]))
+    print("[diff] %s -> %s：事件 %d 条（已追加事件流）。" % (prev_id, curr_id, appended))
+    return EXIT_OK
+
+
+def cmd_parse(args: argparse.Namespace) -> int:
+    """标准号解析与版本序列（M3 转正；纯函数消费，无 IO 副作用）。"""
+    from .stdno import parse_all, version_series
+
+    parsed = parse_all(args.stdnos)
+    for p in parsed:
+        if p.ok:
+            print("[parse] %s -> code=%s ordinal=%s year=%d" % (p.raw, p.code, p.ordinal, p.year))
+        else:
+            print("[parse] %s -> pending（解析失败，原样保留）" % p.raw)
+    series = version_series(args.stdnos)
+    for family_key in sorted(series):
+        print("[parse] 版本序列 %s：旧→新 %s" % (family_key, " | ".join(series[family_key])))
+    return EXIT_OK
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="standard-radar",
@@ -215,15 +365,21 @@ def build_parser() -> argparse.ArgumentParser:
                    help="翻页上限（默认 %d，一处定义 adapters/base.py）" % _FETCH_MAX_PAGES)
     p.set_defaults(handler=cmd_fetch)
 
-    p = sub.add_parser("snapshot", parents=[common], help="本轮条目持久化为快照轮次（M3 交付）")
-    p.set_defaults(handler=_stub("snapshot", "M3"))
+    p = sub.add_parser("snapshot", parents=[common], help="本轮条目持久化为快照轮次（已转正 M3）")
+    p.add_argument("--round", metavar="R####", default=None,
+                   help="消费指定 fetch 留证轮次（默认最近一轮 store/raw/R####/）")
+    p.set_defaults(handler=cmd_snapshot)
 
-    p = sub.add_parser("diff", parents=[common], help="最近两轮快照字段级 diff（M3 交付）")
-    p.set_defaults(handler=_stub("diff", "M3"))
+    p = sub.add_parser("diff", parents=[common], help="最近两轮快照字段级 diff（已转正 M3）")
+    p.add_argument("--from", dest="from_round", metavar="R####", default=None,
+                   help="基准轮次（与 --to 同给；默认最近两轮）")
+    p.add_argument("--to", dest="to_round", metavar="R####", default=None,
+                   help="对比轮次")
+    p.set_defaults(handler=cmd_diff)
 
-    p = sub.add_parser("parse", parents=[common], help="解析标准号与版本序列（M3 交付）")
+    p = sub.add_parser("parse", parents=[common], help="解析标准号与版本序列（已转正 M3）")
     p.add_argument("stdnos", nargs="+", metavar="标准号")
-    p.set_defaults(handler=_stub("parse", "M3"))
+    p.set_defaults(handler=cmd_parse)
 
     p = sub.add_parser("report", parents=[common], help="生成中文日报（M4 交付）")
     p.add_argument("--format", choices=["md", "html", "both"], default="md")
