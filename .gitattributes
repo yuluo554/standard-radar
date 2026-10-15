@@ -1,3 +1,5 @@
+# 行尾与字节冻结两半（见 plan/03 §五）：
+# ① 源码/文档统一 LF（CR 守门测试把关）
 * text=auto eol=lf
 *.png binary
 *.jpg binary
@@ -5,3 +7,7 @@
 *.pdf binary
 *.db binary
 *.sqlite3 binary
+
+# ② 冻结数据半区（M1 落位的资产）：字节不可变（sha256 台账复算），EOL 归一会破坏字节
+data/snapshots/** -text
+data/fixtures/** -text

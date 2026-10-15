@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "standard-radar"
+description = "标准变更雷达：GB/HB 标准快照 diff 变更检测与中文日报（纯本地 CLI）"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "yuluo554" }]
+keywords = ["standards", "gb", "diff", "compliance", "radar", "snapshot"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: Chinese (Simplified)",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Text Processing :: Markup",
+]
+dependencies = []  # 运行时零第三方依赖（见 plan/03 §三 选型）
+dynamic = ["version"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+standard-radar = "standard_radar.cli:main"
+
+[project.urls]
+# 远端于 M6 建仓时创建（见 plan/05-里程碑.md）
+Homepage = "https://github.com/yuluo554/standard-radar"
+Issues = "https://github.com/yuluo554/standard-radar/issues"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.dynamic]
+version = { attr = "standard_radar.__version__" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

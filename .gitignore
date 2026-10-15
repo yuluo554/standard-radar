@@ -27,10 +27,10 @@ env/
 venv/
 ENV/
 
-# Project: snapshots (本地产物，不入库)
-# snapshots/ 存放每轮抓取的原始 JSON 快照与 diff 报告：
-# 体积随轮次增长且可从数据源重建，故不入版本库；
-# 但 data/ 下的「预置快照对」真值样本必须入库（用于基准复现）。
+# Project: 运行态产物（本地产物，不入库）
+# stdradar_store/ 是 CLI 默认 store（每轮快照/事件流/raw 留证），可从数据源重建，不入库；
+# data/ 下的「预置快照对」真值样本必须入库（用于基准复现，见 data/README.md）。
+stdradar_store/
 snapshots/
 reports/
 cache/
@@ -42,6 +42,9 @@ _private/
 # Logs
 logs/
 *.log
+
+# 订阅规则（含个人关注词，私有；入库的只有假词样例 subscriptions.example.json）
+subscriptions.json
 
 # Unit test / coverage
 htmlcov/

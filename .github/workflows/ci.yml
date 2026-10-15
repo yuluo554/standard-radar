@@ -1,0 +1,30 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / py${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, windows-latest]
+        python-version: ["3.8", "3.12"]
+    env:
+      PYTHONUTF8: "1"   # 编码三通路之三：救"不是我们敲的命令"（见 plan/03 §五）
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+      - name: Run tests
+        run: python -m pytest
+      - name: Smoke python -m form
+        run: python -m standard_radar selftest
+      - name: Smoke console script form
+        run: standard-radar selftest
