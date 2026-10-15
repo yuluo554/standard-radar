@@ -17,8 +17,8 @@ from standard_radar.cli import (
 )
 
 # 桩命令登记表：命令 → 目标里程碑（转正时移除对应行 + 补该命令离线用例；见 plan/02 §五）
+# fetch 已于 M2 转正（离线用例见 test_fetch_offline.py）
 STUBS = {
-    "fetch": "M2",
     "snapshot": "M3",
     "diff": "M3",
     "parse": "M3",
@@ -75,9 +75,12 @@ def test_stub_commands_exit_3_and_mention_milestone(cmd, milestone):
 
 
 def test_stub_table_covers_all_documented_commands():
-    """STUBS 表必须覆盖 README/plan 声明的全部功能命令（防"加了命令忘了登记桩"）。"""
+    """STUBS 表必须覆盖 README/plan 声明的全部功能命令（防"加了命令忘了登记桩"）。
+
+    fetch 已于 M2 转正（不在 STUBS，离线用例见 test_fetch_offline.py）。
+    """
     documented = {"fetch", "snapshot", "diff", "parse", "report", "run", "selftest"}
-    assert set(STUBS) | {"selftest"} == documented
+    assert set(STUBS) | {"selftest", "fetch"} == documented
 
 
 def test_selftest_ok_in_tmp_store(tmp_path):

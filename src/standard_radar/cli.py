@@ -1,7 +1,7 @@
 """标准变更雷达 CLI 入口。
 
 命令面（计划于 M2–M5 逐个由桩转正；见 plan/02 §七、plan/05-里程碑.md）：
-    fetch     抓取 GB/HB 双库 → 原始 JSON 留证 + 归一化条目（M2）
+    fetch     抓取 GB/HB 双库 → 原始 JSON 留证 + 归一化条目（已转正 M2）
     snapshot  将本轮条目集持久化为一个快照轮次（M3）
     diff      计算最近两轮快照的字段级变更（新增/字段变更/消失）（M3）
     parse     解析标准号并给出版本序列（M3）
@@ -10,13 +10,15 @@
     selftest  环境自检（骨架期已可用）
 
 退出码契约（K2，见 plan/03 §七）：
-    0 成功 / 1 运行失败 / 2 用法错误 / 3 功能未实现（骨架期）或依赖/环境缺失
+    0 成功 / 1 运行失败（含两库全失败）/ 2 用法错误 / 3 功能未实现（骨架期）或依赖/环境缺失
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
+import time
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple
 
@@ -29,6 +31,10 @@ EXIT_USAGE = 2
 EXIT_UNIMPLEMENTED = 3
 
 DEFAULT_STORE_DIR = "stdradar_store"  # --store 默认值（一处定义）
+
+# 请求参数默认值引用 adapters/base.py（一处定义纪律，plan/02 §八·4；测试有守门防第二副本）
+from .adapters.base import MAX_PAGES_DEFAULT as _FETCH_MAX_PAGES  # noqa: E402
+from .adapters.base import PAGE_SIZE as _FETCH_PAGE_SIZE  # noqa: E402
 
 
 def _stub(name: str, milestone: str) -> Callable[[argparse.Namespace], int]:
@@ -97,6 +103,93 @@ def cmd_selftest(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def _next_round_dir(store: Path) -> Tuple[Path, str]:
+    """取 store/raw/ 下下一个轮次目录 R####（递增，非时间戳——口径同 snapshot M3）。"""
+    raw_root = store / "raw"
+    raw_root.mkdir(parents=True, exist_ok=True)
+    n = 1
+    for p in raw_root.iterdir():
+        if p.is_dir() and p.name.startswith("R") and p.name[1:].isdigit():
+            n = max(n, int(p.name[1:]) + 1)
+    round_id = "R%04d" % n
+    return raw_root / round_id, round_id
+
+
+def cmd_fetch(args: argparse.Namespace) -> int:
+    """抓取 GB/HB 双库（失败隔离：单库失败单列原因码，另一库照常产出；两库全失败 exit 1）。
+
+    留证：store/raw/R####/<lib>-p<N>.json（字节原样）+ <lib>-p<N>.meta.json（对账/回读/
+    字节数/sha256）+ round-meta.json（本轮汇总）。留证形态与 M1 capture 取证同口径；
+    测试经 args.fetch_page_fetcher 注入假页（零网络，plan/02 §八·7），None = 真实网络。
+    """
+    from .adapters import gb as gb_adapter
+    from .adapters import hb as hb_adapter
+    from .adapters.base import META_ASSET
+
+    page_size = args.page_size if args.page_size else _FETCH_PAGE_SIZE
+    max_pages = args.max_pages if args.max_pages else _FETCH_MAX_PAGES
+    fetcher = getattr(args, "fetch_page_fetcher", None)
+
+    libs = ["gb", "hb"] if args.source == "both" else [args.source]
+    adapters = {"gb": gb_adapter, "hb": hb_adapter}
+
+    store = Path(args.store) if args.store else Path(DEFAULT_STORE_DIR)
+    round_dir, round_id = _next_round_dir(store)
+    round_dir.mkdir(parents=True, exist_ok=True)
+
+    results = []
+    for lib in libs:
+        results.append(adapters[lib].fetch(
+            page_size=page_size, max_pages=max_pages,
+            page_fetcher=fetcher, sleep_fn=getattr(args, "fetch_sleep_fn", None),
+        ))
+
+    # raw + meta 逐页落盘（成功库才有页；失败库只记原因码）
+    captured_at = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+    round_meta = {
+        "asset": META_ASSET,
+        "round_id": round_id,
+        "params": {"page_size": page_size, "max_pages": max_pages, "source": args.source},
+        "captured_at": captured_at,
+        "sources": {},
+    }
+    any_ok = False
+    for result in results:
+        if result.ok:
+            any_ok = True
+        src_meta = result.to_dict()
+        if result.ok:
+            for page in result.page_metas:
+                stem = "%s-p%d" % (result.lib, page["page_number"])
+                (round_dir / (stem + ".json")).write_bytes(page["_raw"])
+                meta = dict((k, v) for k, v in page.items() if k != "_raw")
+                meta["asset"] = META_ASSET
+                meta["source_lib"] = result.lib.upper()
+                meta["round_id"] = round_id
+                meta["captured_at"] = captured_at
+                meta["raw_file"] = "store/raw/%s/%s.json" % (round_id, stem)
+                (round_dir / (stem + ".meta.json")).write_bytes(
+                    (json.dumps(meta, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+                )
+            src_meta["skipped_mapping"] = getattr(result, "skipped_mapping", 0)
+        round_meta["sources"][result.lib] = src_meta
+        print("[fetch] %s: %s entries=%s pages=%s" % (
+            result.lib, "ok" if result.ok else "FAIL(%s)" % result.reason,
+            len(result.entries) if result.ok else "-",
+            len(result.page_metas) if result.ok else "-",
+        ))
+
+    (round_dir / "round-meta.json").write_bytes(
+        (json.dumps(round_meta, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
+    )
+    print("[fetch] 留证目录: %s (round %s)" % (round_dir, round_id))
+
+    if not any_ok:
+        print("两库全部失败，本轮无产出。", file=sys.stderr)
+        return EXIT_FAIL
+    return EXIT_OK
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="standard-radar",
@@ -114,11 +207,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     common.add_argument("-v", "--verbose", action="store_true", help="输出更详细日志")
 
-    p = sub.add_parser("fetch", parents=[common], help="抓取 GB/HB 双库（M2 交付）")
+    p = sub.add_parser("fetch", parents=[common], help="抓取 GB/HB 双库（已转正 M2）")
     p.add_argument("--source", choices=["gb", "hb", "both"], default="both", help="限定抓取库别")
-    p.add_argument("--page-size", type=int, default=None, metavar="N", help="每页条数（默认一处定义）")
-    p.add_argument("--max-pages", type=int, default=None, metavar="N", help="翻页上限（默认一处定义）")
-    p.set_defaults(handler=_stub("fetch", "M2"))
+    p.add_argument("--page-size", type=int, default=None, metavar="N",
+                   help="每页条数（默认 %d，一处定义 adapters/base.py）" % _FETCH_PAGE_SIZE)
+    p.add_argument("--max-pages", type=int, default=None, metavar="N",
+                   help="翻页上限（默认 %d，一处定义 adapters/base.py）" % _FETCH_MAX_PAGES)
+    p.set_defaults(handler=cmd_fetch)
 
     p = sub.add_parser("snapshot", parents=[common], help="本轮条目持久化为快照轮次（M3 交付）")
     p.set_defaults(handler=_stub("snapshot", "M3"))
