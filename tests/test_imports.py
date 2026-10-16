@@ -56,6 +56,11 @@ def test_base_constants_anchored():
         base.REASON_MAPPING,
     ):
         assert isinstance(reason, str) and reason
+    # REASON_MAPPING 是活的产出码（非死常量）：SourceResult.reason_codes() 在有跳过时产出
+    from standard_radar.adapters.base import SourceResult
+    r = SourceResult("gb", ok=True, skipped_mapping=1)
+    assert base.REASON_MAPPING in r.reason_codes()
+    assert SourceResult("gb", ok=True).reason_codes() == []
 
 
 def test_m4_modules_promoted_have_contract():

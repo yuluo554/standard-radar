@@ -239,6 +239,45 @@ class TestMappingSkip:
         assert [e.std_id for e in result.entries] == ["C"]
         assert result.skipped_mapping == 2
 
+    def test_mapping_skip_reason_code_produced(self):
+        """REASON_MAPPING 是活的产出码：有跳过条目时 reason_codes() 单列该码（缺陷5 锁死）。
+
+        修复前：REASON_MAPPING 仅被 docstring 引用，map_entry 返回 None 时只累加计数、
+        从不产出该原因码（死常量、无断言覆盖）。
+        """
+        from standard_radar.adapters.base import REASON_MAPPING
+        bad_rows = [{"id": "A", "C_STD_CODE": "GB/T 1-2026"}]  # 缺 C_C_NAME → 跳过
+        result = gb_adapter.fetch(page_size=10, max_pages=1,
+                                  page_fetcher=fake_fetcher([page_spec(bad_rows)], []),
+                                  sleep_fn=lambda _s: None)
+        assert result.reason_codes() == [REASON_MAPPING]
+        assert result.to_dict()["reason_codes"] == [REASON_MAPPING]
+        assert result.to_dict()["skipped_mapping"] == 1
+        # 无跳过 → 无该码（不无中生有）
+        ok = gb_adapter.fetch(page_size=10, max_pages=1,
+                              page_fetcher=fake_fetcher([page_spec(GB_ROWS)], []),
+                              sleep_fn=lambda _s: None)
+        assert ok.reason_codes() == []
+
+    def test_mapping_skip_reason_code_in_round_meta(self, tmp_path):
+        """跳过计数与原因码贯通落盘（round-meta 对账可见 REASON_MAPPING）。"""
+        from standard_radar.adapters.base import REASON_MAPPING
+        store = tmp_path / "store"
+        hb_bad = [{"id": "H", "C_C_NAME": "缺标准号"}]
+        run_fetch(["fetch", "--store", str(store), "--page-size", "10", "--max-pages", "1"],
+                  fake_fetcher([page_spec(GB_ROWS)], [page_spec(hb_bad)]))
+        round_meta = read_round_meta(store)
+        assert round_meta["sources"]["hb"]["reason_codes"] == [REASON_MAPPING]
+        assert round_meta["sources"]["gb"]["reason_codes"] == []
+
+    def test_lib_level_failure_reason_code_single(self):
+        """库级失败原因码经 reason_codes 单列（与条目级跳过码同载体，不吞）。"""
+        from standard_radar.adapters.base import REASON_TIMEOUT
+        result = gb_adapter.fetch(page_size=10, max_pages=1,
+                                  page_fetcher=fake_fetcher([SourceFailure(REASON_TIMEOUT, "x")], []),
+                                  sleep_fn=lambda _s: None)
+        assert result.reason_codes() == [REASON_TIMEOUT]
+
     def test_skip_recorded_in_page_meta(self, tmp_path):
         store = tmp_path / "store"
         hb_bad = [{"id": "H", "C_C_NAME": "缺标准号"}]

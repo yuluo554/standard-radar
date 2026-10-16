@@ -33,9 +33,12 @@ GB_LIST_URL = "https://std.samr.gov.cn/gb/search/gbQueryPage"
 HB_LIST_URL = "https://std.samr.gov.cn/hb/search/hbPage"
 
 # ── 失败原因码（单列，不吞） ──
+# 库级原因码（SourceResult.reason 用）：超时 / 非 200 / 解析失败
 REASON_TIMEOUT = "timeout"
 REASON_HTTP = "http_status"
 REASON_PARSE = "parse_error"
+# 条目级原因码（非库级失败）：必需键缺失整条映射跳过并计数（K8）
+# → SourceResult.reason_codes 在本轮有跳过条目时产出该码（见 SourceResult.reason_codes）
 REASON_MAPPING = "mapping_skip"
 
 # 留证 meta 的 asset 标识（与 M1 capture 取证件同一口径字样）
@@ -45,7 +48,8 @@ META_ASSET = "raw-capture"
 class SourceFailure(Exception):
     """单库级失败（整库，非条目级）：带原因码，供失败隔离层分库记录。
 
-    条目级映射失败不抛本异常（走 REASON_MAPPING 跳过并计数，见 plan/02 §六纪律）。
+    条目级映射失败不抛本异常（走 REASON_MAPPING 跳过并计数，见 plan/02 §六纪律；
+    跳过计数由 SourceResult.skipped_mapping 承载、经 reason_codes() 产出该码）。
     """
 
     def __init__(self, reason: str, message: str):
@@ -205,13 +209,30 @@ def iter_pages(url: str, page_size: int, max_pages: int, page_fetcher=None, slee
 class SourceResult(object):
     """单库一轮抓取结果（成功或整库失败；失败隔离的载体）。"""
 
-    def __init__(self, lib, ok, reason=None, error=None, entries=None, page_metas=None):
+    def __init__(self, lib, ok, reason=None, error=None, entries=None, page_metas=None,
+                 skipped_mapping=0):
         self.lib = lib
         self.ok = ok
-        self.reason = reason  # 失败原因码（REASON_*）；成功为 None
+        self.reason = reason  # 库级失败原因码（REASON_TIMEOUT/HTTP/PARSE）；成功为 None
         self.error = error  # 人读错误信息（失败时）；成功为 None
         self.entries = entries or []  # List[StandardEntry]
         self.page_metas = page_metas or []  # 逐页 meta（含 raw 字节留证与对账）
+        self.skipped_mapping = skipped_mapping  # 条目级映射跳过计数（K8）
+
+    def reason_codes(self):
+        """本轮原因码列表（库级失败码 + 条目级跳过码；单列不吞，plan/03 §2.1）。
+
+        - 库级失败：reason（REASON_TIMEOUT/HTTP/PARSE）单列；
+        - 条目级跳过：skipped_mapping > 0 → REASON_MAPPING 同列（K8：映射不出的条目
+          整条跳过并记录——该码是"有跳过"的显式产出，不再是无处落脚的常量）。
+        两库全失败才整轮失败，条目级跳过不影响另一库产出。
+        """
+        codes = []
+        if self.reason:
+            codes.append(self.reason)
+        if self.skipped_mapping > 0:
+            codes.append(REASON_MAPPING)
+        return codes
 
     def to_dict(self):
         """轮次留证摘要（raw 落盘后 raw/sha256 等由调用方补全路径字段；此处不重复展开 entries）。"""
@@ -222,5 +243,7 @@ class SourceResult(object):
             "error": self.error,
             "entry_count": len(self.entries),
             "pages": len(self.page_metas),
+            "skipped_mapping": self.skipped_mapping,
+            "reason_codes": self.reason_codes(),
             "truncated": any(bool(m.get("truncated")) for m in self.page_metas) or None,
         }

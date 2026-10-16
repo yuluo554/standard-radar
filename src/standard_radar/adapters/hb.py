@@ -98,6 +98,5 @@ def fetch(
             page_metas[-1]["_raw"] = page["raw"]  # 留证字节（CLI 落盘用）
     except SourceFailure as exc:
         return SourceResult(LIB, ok=False, reason=exc.reason, error=exc.message)
-    result = SourceResult(LIB, ok=True, entries=entries, page_metas=page_metas)
-    result.skipped_mapping = skipped_mapping  # type: ignore[attr-defined]
-    return result
+    return SourceResult(LIB, ok=True, entries=entries, page_metas=page_metas,
+                        skipped_mapping=skipped_mapping)
