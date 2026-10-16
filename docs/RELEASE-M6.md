@@ -14,7 +14,7 @@
   ↔ 3 条 ci run（38742089253 / 38742787252 / 38743953523）逐条全 success——tag push 同样
   触发 push 工作流（tag 指向的提交已在 main 上绿过）；本文档自身提交再触发的 run 属发布
   后续运转，对账口径恒为 push 数 = run 数逐条配对，实时以 `gh run list` 为准；
-- tag：`v1.0.0`（annotated，打在 CI 绿的同一提交 349ef90 上）；
+- tag：**`v1.0.0`（annotated，2026-10-16 修正提交 `15e6fdb` 重打；首发时为 349ef90）**；
   **M6 修正补记（2026-10-16）**：旧 tag 打在 M5 提交 349ef90 上，其树内 README 仍
   "发布对接 M6"、plan/00 M6 台账 ⬜、`docs/RELEASE-M6.md` 不在 tag 树内（发布事实与 tag
   树矛盾）→ 本轮回填完成后**删旧 tag、在最终修正提交重打 `v1.0.0`**（RELEASE-M6 入 tag
@@ -146,9 +146,14 @@ Release 已上传附件**字节一致**的副本（`.gitattributes` 标 `-text` 
 - 修正改动 push main（HEAD `5627b61`）触发 ci run **38892252407**，conclusion=**success**，
   四矩阵 ubuntu-22.04 / windows-latest × py3.8 / py3.12 **逐 job 全 success**（`gh run view
   38892252407 --json jobs` 逐条核验）；
-- tag `v1.0.0` 重打后 push tag 触发 ci run（真实 run id 于 tag 重打后收尾提交补记）；
-- `gh run list` 对账：修正轮 2 次 push（main + tag）↔ 2 条 ci run 逐条配对全 success；
+- tag `v1.0.0` 重打后 push tag 触发 ci run **38892938440**，conclusion=**success**，四矩阵
+  逐 job 全 success（`gh run view 38892938440 --json jobs`）；
+- `gh run list` 对账：修正轮 3 次 push（main 5627b61 / main 15e6fdb / tag v1.0.0）
+  ↔ 3 条 ci run（38892252407 / 38892823091 / 38892938440）逐条全 success；
   历史 run（38742089253 首跑 / 38742787252 旧 tag / 38743953523 / 38744331410）保留为记录。
+- **Release 重挂**：删旧 tag 后 Release 对象一度脱挂为 untagged（GitHub 行为），已
+  `gh release delete` + `gh release create v1.0.0` 于新 tag 重建，附件为仓库
+  `docs/release-assets/` 副本（digest 与上表逐字节一致：md 5df98ebf… / html 5fa97ea6…）。
 
 ## 六、收尾提交
 
