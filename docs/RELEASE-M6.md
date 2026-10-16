@@ -138,9 +138,17 @@ Release 已上传附件**字节一致**的副本（`.gitattributes` 标 `-text` 
 - **缺陷8（台账缺数据底座条数项）**：plan/00 承诺-证据台账补"数据底座可获取性（条数证据）"
   一行，绑定 GB total=79826 / HB total=119169 / 400 条核对基线。
 
-**终态**：双解释器 169 passed + 2 skipped；`tools/benchmark.py --check` 17/17 检出 100%/
-误报 0；`verify_ledger.py` 14 资产一致；`gen_snapshot_pairs.py --check` 6 文件位级一致；
-离线端到端 `run` 全链三连跑五分组齐。CI 四矩阵真实 run id 见 §〇 修正补记。
+**终态**：双解释器 170 passed + 2 skipped（修复前 159 + 2）；`tools/benchmark.py --check`
+17/17 检出 100%/误报 0；`verify_ledger.py` 14 资产一致；`gen_snapshot_pairs.py --check`
+6 文件位级一致；离线端到端 `run` 全链三连跑五分组齐（消失/状态迁移分组实测非空）。
+
+**CI 对账（修正轮，实测）**：
+- 修正改动 push main（HEAD `5627b61`）触发 ci run **38892252407**，conclusion=**success**，
+  四矩阵 ubuntu-22.04 / windows-latest × py3.8 / py3.12 **逐 job 全 success**（`gh run view
+  38892252407 --json jobs` 逐条核验）；
+- tag `v1.0.0` 重打后 push tag 触发 ci run（真实 run id 于 tag 重打后收尾提交补记）；
+- `gh run list` 对账：修正轮 2 次 push（main + tag）↔ 2 条 ci run 逐条配对全 success；
+  历史 run（38742089253 首跑 / 38742787252 旧 tag / 38743953523 / 38744331410）保留为记录。
 
 ## 六、收尾提交
 
