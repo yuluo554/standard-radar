@@ -148,12 +148,18 @@ Release 已上传附件**字节一致**的副本（`.gitattributes` 标 `-text` 
   38892252407 --json jobs` 逐条核验）；
 - tag `v1.0.0` 重打后 push tag 触发 ci run **38892938440**，conclusion=**success**，四矩阵
   逐 job 全 success（`gh run view 38892938440 --json jobs`）；
-- `gh run list` 对账：修正轮 3 次 push（main 5627b61 / main 15e6fdb / tag v1.0.0）
-  ↔ 3 条 ci run（38892252407 / 38892823091 / 38892938440）逐条全 success；
-  历史 run（38742089253 首跑 / 38742787252 旧 tag / 38743953523 / 38744331410）保留为记录。
+- 最终修正提交 `92961cd`（tag 重打到位）main push run **38893467927** + tag push run
+  **38893429783**，均 success、四矩阵逐 job 全 success（HEAD 均为 `92961cd`）；
+- `gh run list` 对账：修正轮累计 push（main 5627b61 / main 15e6fdb / tag 38892938440 /
+  main 92961cd ×2）↔ ci run（38892252407 / 38892823091 / 38892938440 / 38893467927 /
+  38893429783）逐条全 success；历史 run（38742089253 首跑 / 38742787252 旧 tag /
+  38743953523 / 38744331410）保留为记录。
 - **Release 重挂**：删旧 tag 后 Release 对象一度脱挂为 untagged（GitHub 行为），已
   `gh release delete` + `gh release create v1.0.0` 于新 tag 重建，附件为仓库
   `docs/release-assets/` 副本（digest 与上表逐字节一致：md 5df98ebf… / html 5fa97ea6…）。
+- **tag 位置**：`v1.0.0` 指向最终修正提交 `92961cd`（tag 树内含 `docs/RELEASE-M6.md`、
+  `docs/release-assets/`，README 为"v1.0.0 已发布"态）；其后若有纯留档提交属发布后运转，
+  不再移动 tag（沿用本仓既有"tag 打在实质交付提交 + 收尾提交在后"的口径）。
 
 ## 六、收尾提交
 
