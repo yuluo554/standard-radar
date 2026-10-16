@@ -150,16 +150,21 @@ Release 已上传附件**字节一致**的副本（`.gitattributes` 标 `-text` 
   逐 job 全 success（`gh run view 38892938440 --json jobs`）；
 - 最终修正提交 `92961cd`（tag 重打到位）main push run **38893467927** + tag push run
   **38893429783**，均 success、四矩阵逐 job 全 success（HEAD 均为 `92961cd`）；
+- **tag 所指提交 `986cd6d` 的 CI 双跑（发布终态）**：main push run **38893770101** +
+  tag push run **38893761096**，均 conclusion=**success**、四矩阵 ubuntu-22.04 /
+  windows-latest × py3.8/3.12 **逐 job 全 success**（HEAD 均为 `986cd6d`）；
+  该提交即 `v1.0.0` 指向的最终修正提交（tag 树内含 RELEASE-M6 + release-assets + README
+  已发布态）；本文件自身的后续留档提交属"发布后运转"（沿用本仓既有口径），不再移动 tag。
 - `gh run list` 对账：修正轮累计 push（main 5627b61 / main 15e6fdb / tag 38892938440 /
-  main 92961cd ×2）↔ ci run（38892252407 / 38892823091 / 38892938440 / 38893467927 /
-  38893429783）逐条全 success；历史 run（38742089253 首跑 / 38742787252 旧 tag /
-  38743953523 / 38744331410）保留为记录。
+  main 92961cd / main+tag 986cd6d）↔ ci run（38892252407 / 38892823091 / 38892938440 /
+  38893467927 / 38893429783 / 38893770101 / 38893761096）逐条全 success；历史 run
+  （38742089253 首跑 / 38742787252 旧 tag / 38743953523 / 38744331410）保留为记录。
 - **Release 重挂**：删旧 tag 后 Release 对象一度脱挂为 untagged（GitHub 行为），已
   `gh release delete` + `gh release create v1.0.0` 于新 tag 重建，附件为仓库
   `docs/release-assets/` 副本（digest 与上表逐字节一致：md 5df98ebf… / html 5fa97ea6…）。
-- **tag 位置**：`v1.0.0` 指向最终修正提交 `92961cd`（tag 树内含 `docs/RELEASE-M6.md`、
-  `docs/release-assets/`，README 为"v1.0.0 已发布"态）；其后若有纯留档提交属发布后运转，
-  不再移动 tag（沿用本仓既有"tag 打在实质交付提交 + 收尾提交在后"的口径）。
+- **tag 位置**：`v1.0.0` 指向本轮修正的最终提交（tag 树内含 `docs/RELEASE-M6.md`、
+  `docs/release-assets/`、README"v1.0.0 已发布"态）；tag 所指提交自身的 CI run id 以
+  `gh run list` 实时为准（push 数 = run 数逐条配对）。
 
 ## 六、收尾提交
 
