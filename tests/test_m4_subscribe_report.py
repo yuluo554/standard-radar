@@ -153,6 +153,9 @@ def _events_rows():
         {"event": "state_transition", "std_id": "S30", "source_lib": "GB", "std_code": "GB/T 1-2026",
          "field": "state", "old_value": "即将实施", "new_value": "现行",
          "prev_round": "R0001", "curr_round": "R0002"},
+        {"event": "field_changed", "std_id": "S31", "source_lib": "GB", "std_code": "GB/T 2-2026",
+         "field": "act_date", "old_value": "2026-12-01", "new_value": "2027-02-01",
+         "prev_round": "R0001", "curr_round": "R0002"},
         {"event": "disappeared", "std_id": "S99", "source_lib": "HB", "std_code": "MH/T 9-2025",
          "field": None, "old_value": None, "new_value": None,
          "prev_round": "R0001", "curr_round": "R0002"},
@@ -163,6 +166,7 @@ class TestReport:
     ENTRIES = {
         "S10": entry("S10", std_code="GB/T 10-2026", state="即将实施", act_date="2026-10-25"),
         "S30": entry("S30", state="现行"),
+        "S31": entry("S31", std_code="GB/T 2-2026", state="现行"),
         "S99": entry("S99", lib="HB", std_code="MH/T 9-2025"),
     }
 
@@ -172,8 +176,27 @@ class TestReport:
         assert [it["std_code"] for it in model["new_items"]] == ["GB/T 10-2026"]
         assert model["transitions"][0]["old_state"] == "即将实施"
         assert model["transitions"][0]["new_state"] == "现行"
-        assert model["field_changes"][0]["field"] == "state"
+        # 呈现层择一：状态变化只进"状态迁移"分组，field_changed(state) 不重复进"字段变更"
+        assert [it["field"] for it in model["field_changes"]] == ["act_date"]
         assert model["disappeared"][0]["std_code"] == "MH/T 9-2025"
+
+    def test_state_change_without_transition_event_falls_back(self):
+        """兜底：事件流仅有 field_changed(state) 而无 state_transition（历史/降级流）
+        → 仍在"字段变更"分组呈现，不丢信息（择一规则的兜底面）。"""
+        rows = [{"event": "field_changed", "std_id": "S30", "source_lib": "GB",
+                 "std_code": "GB/T 1-2026", "field": "state", "old_value": "即将实施",
+                 "new_value": "现行", "prev_round": "R0001", "curr_round": "R0002"}]
+        model = report_mod.build_report_model(
+            rows, self.ENTRIES, today=date(2026, 10, 15))
+        assert [it["field"] for it in model["field_changes"]] == ["state"]
+        assert model["transitions"] == []
+
+    def test_state_change_not_double_counted_across_groups(self):
+        """同一 (std_id, 轮对) 的状态变化在两个分组里只出现一次（不重复展示）。"""
+        model = report_mod.build_report_model(
+            _events_rows(), self.ENTRIES, today=date(2026, 10, 15))
+        assert len(model["transitions"]) == 1
+        assert all(it["field"] != "state" for it in model["field_changes"])
 
     def test_countdown_group_consumes_soon_bucket(self):
         """倒计时分组消费 soon_bucket（threshold=SOON_DAYS_DEFAULT）；存量条目也进分组。"""

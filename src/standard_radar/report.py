@@ -65,8 +65,19 @@ def build_report_model(events: List[dict], entries_by_id: Dict[str, StandardEntr
     含 state_transition——状态迁移单列分组）；消费前先经 dedupe_events 去重
     （diff 全序列重放追加导致的重复轮次事件只计一次——K16 幂等，M5 收口）；
     entries_by_id：最新快照的条目索引（每条必带字段的来源——只展示快照里实存的原文）；
+    最新快照无此条目（消失条目即此情形）时，退回事件自带的 std_code/source_lib 原文
+    （事件流字段，非臆测），其余字段仍 pending（无原文可取不填充）；
     today：注入日期（date 或 None；None 时倒计时不判定——纯函数不读系统时钟，
     运行通路 CLI 恒传 date.today()）。
+
+    状态变化呈现规则（M6 口径收敛，消除 plan/01 §二·2 与 §二·4 的双口径）：
+    写入端 diffing 对 state 变化产出 field_changed(field="state")，CLI diff 另经
+    states.state_transitions 产出 state_transition（两者并存于 append-only 事件流，
+    完整留证）；**呈现层择一**——同一 (std_id, prev_round, curr_round) 已有
+    state_transition 时，其 field_changed(field="state") 不再进"字段变更"分组
+    （状态变化只由"状态迁移"分组承载，避免同一变更在两分组重复展示）；若事件流
+    仅有 field_changed(state) 而缺 state_transition（历史/降级流），则保留在
+    "字段变更"分组作兜底，不丢信息。
 
     模型形态（渲染器消费的固定结构）：
     {
@@ -87,10 +98,20 @@ def build_report_model(events: List[dict], entries_by_id: Dict[str, StandardEntr
 
     events = dedupe_events(events)
 
-    def base_of(std_id: str) -> dict:
+    # 呈现层择一：状态变化由"状态迁移"分组承载；同轮对上已有 state_transition 的
+    # field_changed(state) 不再重复进"字段变更"（无 state_transition 时兜底保留）。
+    transition_keys = set()
+    for ev in events:
+        if ev.get("event") == "state_transition":
+            transition_keys.add((ev.get("std_id"), ev.get("prev_round"), ev.get("curr_round")))
+
+    def base_of(std_id: str, ev: dict) -> dict:
         entry = entries_by_id.get(std_id)
         if entry is None:
-            return {"std_code": PENDING, "name_cn": PENDING, "source_lib": PENDING,
+            # 最新快照无此条目（消失条目正是这种情形）：退回事件自带的标准号/来源库
+            # （事件流里的原文字段，非臆测），其余字段仍 pending（快照无原文可取）。
+            return {"std_code": _fmt(ev.get("std_code")), "name_cn": PENDING,
+                    "source_lib": _fmt(ev.get("source_lib")),
                     "state": PENDING, "act_date": PENDING}
         return {
             "std_code": _fmt(entry.std_code),
@@ -106,13 +127,13 @@ def build_report_model(events: List[dict], entries_by_id: Dict[str, StandardEntr
         kind = ev.get("event")
         std_id = ev.get("std_id", "")
         if kind == EVENT_NEW:
-            item = base_of(std_id)
+            item = base_of(std_id, ev)
             item["group"] = ev.get("_group")
             item["prev_round"] = ev.get("prev_round")
             item["curr_round"] = ev.get("curr_round")
             new_items.append(item)
         elif kind == "state_transition":
-            item = base_of(std_id)
+            item = base_of(std_id, ev)
             item.update({
                 "old_state": _fmt(ev.get("old_value")),
                 "new_state": _fmt(ev.get("new_value")),
@@ -121,7 +142,10 @@ def build_report_model(events: List[dict], entries_by_id: Dict[str, StandardEntr
             })
             transitions.append(item)
         elif kind == "field_changed":
-            item = base_of(std_id)
+            if ev.get("field") == "state" and (
+                    (std_id, ev.get("prev_round"), ev.get("curr_round")) in transition_keys):
+                continue  # 状态变化已由"状态迁移"分组承载（呈现层择一，不重复展示）
+            item = base_of(std_id, ev)
             item.update({
                 "field": _fmt(ev.get("field")),
                 "old_value": _fmt(ev.get("old_value")),
@@ -131,7 +155,7 @@ def build_report_model(events: List[dict], entries_by_id: Dict[str, StandardEntr
             })
             field_changes.append(item)
         elif kind == "disappeared":
-            item = base_of(std_id)
+            item = base_of(std_id, ev)
             item["prev_round"] = ev.get("prev_round")
             item["curr_round"] = ev.get("curr_round")
             disappeared.append(item)

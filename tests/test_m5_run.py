@@ -74,6 +74,15 @@ def run_cli(argv, fetcher=None):
     return code, out.getvalue(), err.getvalue()
 
 
+def _section(md: str, title: str) -> str:
+    """取日报某一分组的正文（到下一个二级标题或页脚分隔线为止，含表头行）。"""
+    body = md.split("## " + title + "\n", 1)[1]
+    for stop in ("\n## ", "\n---"):
+        if stop in body:
+            body = body.split(stop, 1)[0]
+    return body
+
+
 class TestRunEndToEnd:
     def test_run_full_pipeline_both_formats(self, tmp_path):
         """端到端：注入两轮假页 → run 连跑两次 → 快照两轮 + 事件流 + MD/HTML 日报齐。"""
@@ -219,3 +228,55 @@ class TestRunEndToEnd:
             fetcher=fake_fetcher([page_spec(gb_rows())], [page_spec(hb_rows())]))
         assert code == EXIT_FAIL
         assert "订阅规则" in err or "RuleError" in err or "规则" in err
+
+    def test_run_three_rounds_disappeared_group_nonempty(self, tmp_path):
+        """缺陷1 交付态复现（run 通路）：连跑三轮日报，第 1 条自 R2 起连续缺失两轮
+        → 日报"消失（去抖确认）"分组非空（不再恒为"（无）"）。
+
+        修复前：run 内 diff 只比最近两轮且每次新建 MissingTracker → 去抖永不确认。
+        """
+        store = tmp_path / "store"
+        out_dir = tmp_path / "reports"
+        argv = ["run", "--store", str(store), "--page-size", "4", "--max-pages", "1",
+                "--format", "md", "--out", str(out_dir)]
+        # R1：GB 两条（G1、G2）
+        code, out, err = run_cli(argv, fetcher=fake_fetcher(
+            [page_spec(gb_rows(ids=(1, 2)))], [page_spec(hb_rows())]))
+        assert code == EXIT_OK, out + err
+        # R2：G1 缺失（缺失第 1 轮，去抖未满 → 不报）
+        code, out, err = run_cli(argv, fetcher=fake_fetcher(
+            [page_spec(gb_rows(ids=(2,)))], [page_spec(hb_rows())]))
+        assert code == EXIT_OK, out + err
+        md_r2 = (out_dir / "standard-report.md").read_text(encoding="utf-8")
+        assert "消失（去抖确认）" in md_r2
+        # R2 单独看：G1 只缺 1 轮 → 消失组仍空
+        assert "GB/T" not in _section(md_r2, "消失（去抖确认）")
+        # R3：G1 仍缺失（缺失第 2 轮 → 去抖确认 disappeared）
+        code, out, err = run_cli(argv, fetcher=fake_fetcher(
+            [page_spec(gb_rows(ids=(2,)))], [page_spec(hb_rows())]))
+        assert code == EXIT_OK, out + err
+        md_r3 = (out_dir / "standard-report.md").read_text(encoding="utf-8")
+        section = _section(md_r3, "消失（去抖确认）")
+        assert "GB/T 48221-2026" in section  # G1 进消失分组（去抖确认）
+        assert "（无）" not in section
+
+    def test_run_two_rounds_state_transition_group_nonempty(self, tmp_path):
+        """缺陷2 交付态复现（run 通路）：一轮"即将实施"→二轮"现行"
+        → 日报"状态迁移"分组非空（states.state_transitions 已接线）。
+
+        修复前：写入端 diffing 从不产 state_transition 事件 → 分组恒"（无）"。
+        """
+        store = tmp_path / "store"
+        out_dir = tmp_path / "reports"
+        argv = ["run", "--store", str(store), "--page-size", "4", "--max-pages", "1",
+                "--format", "md", "--out", str(out_dir)]
+        code, out, err = run_cli(argv, fetcher=fake_fetcher(
+            [page_spec(gb_rows(ids=(1,), state="即将实施"))], [page_spec(hb_rows())]))
+        assert code == EXIT_OK, out + err
+        code, out, err = run_cli(argv, fetcher=fake_fetcher(
+            [page_spec(gb_rows(ids=(1,), state="现行"))], [page_spec(hb_rows())]))
+        assert code == EXIT_OK, out + err
+        md = (out_dir / "standard-report.md").read_text(encoding="utf-8")
+        section = _section(md, "状态迁移")
+        assert "即将实施 → 现行" in section
+        assert "（无）" not in section

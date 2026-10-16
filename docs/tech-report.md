@@ -88,12 +88,24 @@ HB 实际 57 键（`C_STD_CODE2..5` 为同义写法变体、`_version_` 等 int 
 事件，新版伴随字段（状态/发布日/实施日）归并入升版事件、不逐字段单列
 （真值 S32 语义；否则升版场景误报 3 条）。
 
+**状态变化事件口径（写入端并存 + 呈现层择一，M6 收敛题面双口径）**：写入端 `diffing`
+对 `state` 变化产出 `field_changed(field="state")`，`cli diff` 另调
+`states.state_transitions` 从轮次序列直算并追加 `state_transition` 事件——两类事件并存于
+append-only 事件流（完整留证）。日报呈现层**择一**：同一 `(std_id, prev_round, curr_round)`
+已有 `state_transition` 时，其 `field_changed(field="state")` 不再进"字段变更"分组（状态
+变化只由"状态迁移"分组承载，同一变更不跨分组重复展示）；事件流仅有 `field_changed(state)`
+而无 `state_transition`（历史/降级流）则兜底保留在"字段变更"分组。择一只作用于呈现，
+字段级真值对齐口径（§2.3 白名单含 state）不变。
+
 ### 2.4 跨轮口径（确定性）
 
 - **逐轮续接**：轮次序列按相邻对比逐轮推进，去抖计数经 `MissingTracker`
   跨轮续接（锚定基线在场起算）；CLI 每次运行对已存轮次**全序列重放**，
   重放本身即状态重建（不落独立状态文件）——确定性、幂等；
-- **span 两端视图**：显式跨轮（R1→R3）按两端在场性直接判定，不做去抖累积；
+  **M6 修正**：`cli diff` 默认即全序列重放（从 R1 起逐相邻轮续接）；修复前默认只比
+  最近两轮且每次新建 tracker，去抖计数恒为 1 < `MISSING_DEBOUNCE`，disappeared 在交付态
+  永不确认（文档已声明全序列重放、代码未做到——缺陷1 已修复并由 CLI 级用例锁死）；
+- **span 两端视图**：显式跨轮（R1→R3，`--from/--to`）按两端在场性直接判定，不做去抖累积；
   去抖语义由逐轮续接承担。两个口径都有真值场景锁定（r2-to-r3 / r1-to-r3-span）；
 - **报告幂等收口**（M5）：全序列重放会向 append-only 事件流重复追加同轮对事件，
   日报消费侧按事件键 `(event, std_id, field, old_value, new_value, prev_round,

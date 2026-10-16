@@ -3,7 +3,7 @@
 命令面（计划于 M2–M5 逐个由桩转正；见 plan/02 §七、plan/05-里程碑.md）：
     fetch     抓取 GB/HB 双库 → 原始 JSON 留证 + 归一化条目（已转正 M2）
     snapshot  将本轮条目集持久化为一个快照轮次（已转正 M3）
-    diff      计算最近两轮快照的字段级变更（新增/字段变更/消失）（已转正 M3）
+    diff      已存轮次全序列重放的字段级变更（新增/字段变更/消失/状态迁移）（已转正 M3；M6 修正重放口径）
     parse     解析标准号并给出版本序列（已转正 M3）
     report    生成中文日报（Markdown/HTML）（已转正 M4）
     run       全链路一条命令：抓取 → 快照 → diff → 日报（已转正 M5）
@@ -171,7 +171,6 @@ def cmd_fetch(args: argparse.Namespace) -> int:
                 (round_dir / (stem + ".meta.json")).write_bytes(
                     (json.dumps(meta, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
                 )
-            src_meta["skipped_mapping"] = getattr(result, "skipped_mapping", 0)
         round_meta["sources"][result.lib] = src_meta
         print("[fetch] %s: %s entries=%s pages=%s" % (
             result.lib, "ok" if result.ok else "FAIL(%s)" % result.reason,
@@ -268,14 +267,27 @@ def cmd_snapshot(args: argparse.Namespace) -> int:
 
 
 def cmd_diff(args: argparse.Namespace) -> int:
-    """最近两轮（或 --from/--to 指定轮）快照的字段级 diff（M3 转正）。
+    """已存轮次快照的字段级 diff（M3 转正；M6 修正交付态全序列重放）。
 
-    - 默认：快照目录里最近两轮（相邻对比，new/field_changed/disappeared 去抖）；
+    - 默认：**对已存轮次全序列重放**（从 R1 起逐相邻轮续接，携带同一 MissingTracker
+      跨轮累积去抖计数）——与 docs/tech-report.md、data/README.md §七 既有声明一致
+      （"CLI 每次运行对已存轮次全序列重放"）；修复前只比最近两轮且每次新建 tracker，
+      缺失计数恒为 1 < MISSING_DEBOUNCE，disappeared 在交付态永不确认；
+    - --from/--to：显式跨轮**两端视图**（diff_rounds_span，不做去抖累积）；
     - store 里只有一轮：首轮基线形态——不产事件，exit 0（K4，明确提示）；
-    - 事件追加进 events/events.jsonl（append-only）并打印。
+    - 状态迁移：同时调 `states.state_transitions` 从轮次序列直算迁移事件（缺陷2 接线：
+      状态变化在事件流里 field_changed(state) 与 state_transition 并存，日报呈现层择一
+      ——见 report.build_report_model 的"状态变化呈现规则"）；
+    - 事件追加进 events/events.jsonl（append-only，全序列重放会重复追加同轮对事件，
+      日报消费侧按事件键去重——K16 幂等）。
     """
     from . import snapshot as snap
-    from .diffing import MissingTracker, diff_entries, events_to_dicts
+    from . import states as states_mod
+    from .diffing import diff_rounds, diff_rounds_span, events_to_dicts
+
+    def states_map(entries):
+        """条目集 → states.state_transitions 期望的 {std_id: (state, source_lib, std_code)}。"""
+        return dict((e.std_id, (e.state, e.source_lib, e.std_code)) for e in entries)
 
     store = _store_path(args)
     if bool(args.from_round) != bool(args.to_round):
@@ -291,37 +303,52 @@ def cmd_diff(args: argparse.Namespace) -> int:
         return EXIT_FAIL
 
     ids = [rid for rid, _ in all_rounds]
+    entries_by_round = dict(all_rounds)
     if args.from_round or args.to_round:
-        if not (args.from_round and args.to_round):
-            print("--from 与 --to 必须同时给出。", file=sys.stderr)
-            return EXIT_USAGE
         prev_id, curr_id = args.from_round, args.to_round
         if prev_id not in ids or curr_id not in ids:
             print("指定轮次不存在：%s" % (prev_id if prev_id not in ids else curr_id), file=sys.stderr)
             return EXIT_FAIL
+        prev_entries, curr_entries = entries_by_round[prev_id], entries_by_round[curr_id]
+        # 两端视图：显式跨轮按两端在场性直接判定（不做去抖累积；span 口径）
+        events = diff_rounds_span(
+            snap.entries_by_id(prev_entries), snap.entries_by_id(curr_entries),
+            first_round=prev_id, last_round=curr_id,
+        )
+        transitions = states_mod.state_transitions([
+            (prev_id, states_map(prev_entries)),
+            (curr_id, states_map(curr_entries)),
+        ])
+        scope = "%s -> %s（两端视图）" % (prev_id, curr_id)
     else:
         if len(all_rounds) < 2:
             print("[diff] 仅一轮快照（%s）：首轮建立基线，不产生事件（K4）。" % ids[0])
             return EXIT_OK
-        prev_id, curr_id = ids[-2], ids[-1]
-    prev_entries = dict((rid, ents) for rid, ents in all_rounds)[prev_id]
-    curr_entries = dict((rid, ents) for rid, ents in all_rounds)[curr_id]
+        # 全序列重放：从序列起点 R1 起逐相邻轮续接，同一 tracker 跨轮累积去抖计数
+        events = diff_rounds(
+            [snap.entries_by_id(ents) for _, ents in all_rounds], round_ids=ids)
+        transitions = states_mod.state_transitions(
+            [(rid, states_map(ents)) for rid, ents in all_rounds])
+        scope = "全序列重放 %s..%s" % (ids[0], ids[-1])
 
-    events = diff_entries(
-        snap.entries_by_id(prev_entries), snap.entries_by_id(curr_entries),
-        prev_round=prev_id, curr_round=curr_id,
-        with_new=True, tracker=MissingTracker(),
-    )
-    rows = events_to_dicts(events)
+    rows = events_to_dicts(events) + [t.to_dict() for t in transitions]
     appended = snap.append_events(store, rows)
     for row in rows:
         if row["event"] == "field_changed":
-            print("[diff] %s %s %s: %s -> %s" % (
-                row["event"], row["std_id"], row["field"], row["old_value"], row["new_value"]))
+            print("[diff] %s %s %s: %s -> %s (%s -> %s)" % (
+                row["event"], row["std_id"], row["field"], row["old_value"], row["new_value"],
+                row["prev_round"], row["curr_round"]))
+        elif row["event"] == "state_transition":
+            print("[diff] %s %s (%s) %s -> %s (%s -> %s)" % (
+                row["event"], row["std_id"], row["source_lib"], row["old_value"],
+                row["new_value"], row["prev_round"], row["curr_round"]))
         else:
-            print("[diff] %s %s (%s)" % (row["event"], row["std_id"], row["source_lib"]))
-    print("[diff] %s -> %s：事件 %d 条（已追加事件流）。" % (prev_id, curr_id, appended))
+            print("[diff] %s %s (%s) %s -> %s" % (
+                row["event"], row["std_id"], row["source_lib"],
+                row["prev_round"], row["curr_round"]))
+    print("[diff] %s：事件 %d 条（已追加事件流）。" % (scope, appended))
     return EXIT_OK
+
 
 
 def cmd_parse(args: argparse.Namespace) -> int:
@@ -475,9 +502,9 @@ def build_parser() -> argparse.ArgumentParser:
                    help="消费指定 fetch 留证轮次（默认最近一轮 store/raw/R####/）")
     p.set_defaults(handler=cmd_snapshot)
 
-    p = sub.add_parser("diff", parents=[common], help="最近两轮快照字段级 diff（已转正 M3）")
+    p = sub.add_parser("diff", parents=[common], help="已存轮次全序列重放字段级 diff（已转正 M3；M6 修正）")
     p.add_argument("--from", dest="from_round", metavar="R####", default=None,
-                   help="基准轮次（与 --to 同给；默认最近两轮）")
+                   help="基准轮次（与 --to 同给；两端视图，不去抖累积；默认全序列重放）")
     p.add_argument("--to", dest="to_round", metavar="R####", default=None,
                    help="对比轮次")
     p.set_defaults(handler=cmd_diff)

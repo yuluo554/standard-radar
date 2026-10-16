@@ -393,13 +393,59 @@ class TestCliM3Commands:
         assert code == EXIT_OK, err
         assert "field_changed S30 state: 即将实施 -> 现行" in out
         assert "new S10 (GB)" in out
+        assert "state_transition S30" in out  # 状态迁移事件（缺陷2 接线：states.state_transitions 入管线）
         rows = snap.read_events(store)
-        assert len(rows) == 2
+        # 字段级事件（new + field_changed）+ 状态迁移视图事件（state_transition）
+        assert len(rows) == 3
+        assert sorted(r["event"] for r in rows) == ["field_changed", "new", "state_transition"]
 
     def test_diff_requires_both_from_and_to(self, tmp_path):
         code, _out, _err = run_cli(["diff", "--store", str(tmp_path / "s"),
                                     "--from", "R0001"])
         assert code == EXIT_USAGE
+
+    def test_diff_three_rounds_reports_disappeared_via_cli(self, tmp_path):
+        """缺陷1 锁死（交付态 CLI 去抖）：三轮快照、第 1 条自 R2 起连续缺失两轮
+        → `diff` 命令输出 disappeared 事件（全序列重放，跨轮 MissingTracker 续接）。
+
+        修复前：默认只比最近两轮且每次新建 tracker → 缺失计数恒 1 < MISSING_DEBOUNCE，
+        disappeared 永不确认（招牌功能在交付路径空转）。
+        """
+        store = tmp_path / "store"
+        snap.save_round(store, "R0001", [entry("S20"), entry("S01")])
+        snap.save_round(store, "R0002", [entry("S01")])  # S20 缺失第 1 轮
+        snap.save_round(store, "R0003", [entry("S01")])  # S20 缺失第 2 轮 → 确认
+        code, out, err = run_cli(["diff", "--store", str(store)])
+        assert code == EXIT_OK, err
+        assert "disappeared S20" in out
+        assert "R0002 -> R0003" in out  # 确认落在缺失第 2 轮的轮对上
+        rows = snap.read_events(store)
+        assert [(r["event"], r["std_id"]) for r in rows] == [(EVENT_DISAPPEARED, "S20")]
+
+    def test_diff_replay_is_idempotent_event_content(self, tmp_path):
+        """全序列重放确定性：同 store 重复 diff，实算事件集合逐次一致（消费侧去重收口）。"""
+        store = tmp_path / "store"
+        snap.save_round(store, "R0001", [entry("S20"), entry("S01")])
+        snap.save_round(store, "R0002", [entry("S01")])
+        snap.save_round(store, "R0003", [entry("S01")])
+        run_cli(["diff", "--store", str(store)])
+        first = snap.read_events(store)
+        run_cli(["diff", "--store", str(store)])
+        second = snap.read_events(store)
+        assert len(second) == 2 * len(first)  # append-only 重复追加（真实场景）
+        from standard_radar.report import dedupe_events
+        assert dedupe_events(first) == dedupe_events(second)  # 去重后逐条一致
+
+    def test_diff_span_from_to_does_not_debounce(self, tmp_path):
+        """显式 --from/--to 两端视图：不去抖累积（S12 口径），一条两端皆无 → 零事件。"""
+        store = tmp_path / "store"
+        snap.save_round(store, "R0001", [entry("S01")])
+        snap.save_round(store, "R0002", [entry("S01"), entry("S12")])
+        snap.save_round(store, "R0003", [entry("S01")])
+        code, out, err = run_cli(["diff", "--store", str(store),
+                                  "--from", "R0001", "--to", "R0003"])
+        assert code == EXIT_OK, err
+        assert "事件 0 条" in out  # S12 两端皆无 → 无事件；两端在场 S01 无变更
 
     def test_parse_command_ok_and_pending(self):
         code, out, _err = run_cli(["parse", "GB/T 48222-2026", "不是标准号"])

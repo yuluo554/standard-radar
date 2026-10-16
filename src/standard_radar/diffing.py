@@ -17,6 +17,12 @@
 - **span 两端视图**（diff_rounds_span）：显式跨轮（如 R1→R3）时按两端在场性直接判定
   （new/field_changed 两端比、disappeared 两端比），不做去抖累积——去抖语义由逐轮续接承担；
   真值 r1-to-r3-span 期望形态：S10/S11 new、S20/S21 disappeared、S12（只存在于 R2）两端皆无 → 无事件。
+
+状态变化事件口径（M6 收敛题面 §二·2 与 §二·4 双口径）：
+- 本模块对 state 字段变化产出 field_changed(field="state")（白名单含 state，字段级口径不变）；
+- 迁移视图由 states.state_transitions 直算，CLI diff 一并追加 state_transition 事件
+  （写入端并存）；日报呈现层择一（同一 (std_id, 轮对) 已有 state_transition 时其
+  field_changed(state) 不进"字段变更"分组）——详见 report.build_report_model。
 """
 
 from __future__ import annotations
