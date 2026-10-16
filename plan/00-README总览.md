@@ -50,8 +50,9 @@
 | 关键词订阅 + 中文日报 | 本地订阅规则文件 + diff 事件流 | Markdown/HTML 日报输出 | 订阅规则不变时命中/不命中一致性 | ✅ M4（subscribe.py/report.py 转正：纯子串匹配规则不变命中稳定；单一渲染源 MD/HTML 同构 + 零外链 + 免责声明） |
 | 真值基准（零 API 依赖） | 预置快照对 + 人工标注植入真值 | 基准套件 + 指标口径写进 README | 一条命令可重复运行 | ✅ M4（tools/benchmark.py --check 守门；分事件类型指标写进根 README；检出率 100%/误报 0） |
 | 数据源可获取性实测记录 | 2026-10-15 实测（2 库 + 备选源） | `data/README.md` | 局限逐条登记（STATE 无效/无日期参数/db total=0） | ✅ 题目定稿阶段完成 |
+| **数据底座可获取性（条数证据）** | `std.samr.gov.cn` 双库列表接口 ✅ 2026-10-15 实测快照值：GB `total=79826` / HB `total=119169`；活网捕获核对基线 400 条（GB 200 + HB 200，`data/snapshots/raw/` 4 页，逐页计数对账与 sha256 留证） | 适配器代码 + `data/snapshots/raw/*`（400 条 raw+meta）+ `data/assets-ledger.csv` 台账 | ① 接口 total 与实测条数对账（`data/README.md` §一/§六）；② 400 条捕获逐页计数对账 + 参数回读 + 台账 sha256 复算（`tools/verify_ledger.py` 14 资产一致）；③ 活网运行态 fetch 2/2 成功（§六·补，各 1 页 5 条） | ✅ M1/M2（条数为**基准日实测快照值**，仅作可获取性证据、不作交付承诺——数值口径见 `data/README.md` §五） |
 | 计划文档（02–06）与可运行骨架 | plan/02–06 + `src/standard_radar/`（14 文件）+ tests（5 文件）+ CI 配置 | 仓库直达 | 双解释器 pytest 全绿 + 双通路冒烟 + 守门变异验证 | ✅ M0 完成（CI 已于 M6 首推验证：run 38742089253 四矩阵全绿） |
-| GitHub 公开仓库发布 | 纯净名 `standard-radar`，署名 yuluo554 | git tag + GitHub Release 附产物 + 发布留档三件套 | M6 DoD 逐项核验 | ✅ M6（github.com/yuluo554/standard-radar public；tag v1.0.0；CI 首跑 run 38742089253 四矩阵全绿；Release 资产核验在位；留档 docs/RELEASE-M6.md） |
+| GitHub 公开仓库发布 | 纯净名 `standard-radar`，署名 yuluo554 | git tag + GitHub Release 附产物 + 发布留档三件套 | M6 DoD 逐项核验 | ✅ M6（github.com/yuluo554/standard-radar public；**tag v1.0.0 于 2026-10-16 修正提交重打**（旧 tag 在 M5 提交 349ef90、树内 RELEASE-M6 缺失/README 未转正——审计缺陷4）；CI 四矩阵全绿（首跑 run 38742089253 + 修正轮 run 见 docs/RELEASE-M6.md §五）；Release 资产核验在位（sha256 与仓库副本对账见 RELEASE-M6 §四）；留档 docs/RELEASE-M6.md） |
 
 ## 里程碑
 
@@ -63,7 +64,7 @@
 | M3 | **diff 与解析**：持久快照 + 字段级 diff 三类事件（消失去抖）+ 标准号版本解析归并 + STATE 迁移检测与"即将实施"倒计时 | ✅ 2026-10-15（snapshot/diff/parse 转正；真值复现检出率 100%/误报 0（17/17，双解释器一致）；126 passed + 1 skip × 2 通道；去抖跨轮口径定稿入 data/README §七；证据见 plan/HANDOFF-M4.md） |
 | M4 | **基准**：预置快照对真值基准 + 关键词订阅规则 + 中文 Markdown/HTML 日报生成 | ✅ 2026-10-15（benchmark/subscribe/report 转正 + report 命令转正；基准分事件类型指标入 README（17/17 检出 100%/误报 0）；变异验证三处；153 passed + 1 skip × 2 通道；证据见 plan/HANDOFF-M5.md） |
 | M5 | **交付**：CLI 全链路一条命令产出日报 + 技术报告 + README（指标口径、样例日报） | ✅ 2026-10-15（run 命令转正（桩表清空）+ 事件流去重收口（K16 幂等：报告内容与 diff 运行次数无关）；技术报告 docs/tech-report.md 落位（字段映射/diff 判定/归并与迁移）；README 终稿（run 用法/退出码语义/样例日报）；端到端离线演示全通（五分组齐/HTML 零外链/免责声明在位）；变异验证新增事件去重一处；159 passed + 2 skipped × 2 通道；证据见 plan/HANDOFF-M6.md） |
-| M6 | **发布**：脱敏审查 → git tag → GitHub 公开仓库（纯净名 `standard-radar`）+ Release 附产物 + 发布留档三件套 | ✅ 2026-10-15（脱敏四步+产物扫描+提交元数据全过（留档 docs/RELEASE-M6.md §一）；建仓 push main（349ef90）；**CI 四矩阵首跑全绿 run 38742089253**（ubuntu-22.04/windows-latest × 3.8/3.12 逐 job success，1m8s；gh run list 对账 push 数=run 数=1）；tag v1.0.0 打在 CI 绿提交 + Release 附样例日报 MD+HTML（gh release view 核验资产在位）；干净 clone 双解释器 159+2 全绿 + `pip install .` 装机态双通路冒烟过；留档三件套 docs/RELEASE-M6.md） |
+| M6 | **发布**：脱敏审查 → git tag → GitHub 公开仓库（纯净名 `standard-radar`）+ Release 附产物 + 发布留档三件套 | ✅ 2026-10-15 首发 + **2026-10-16 修正**（脱敏四步+产物扫描+提交元数据全过（留档 docs/RELEASE-M6.md §一）；建仓 push main（349ef90）；**CI 四矩阵首跑全绿 run 38742089253**（ubuntu-22.04/windows-latest × 3.8/3.12 逐 job success，1m8s；gh run list 对账 push 数=run 数=1）；tag v1.0.0 打在 CI 绿提交 + Release 附样例日报 MD+HTML（gh release view 核验资产在位、sha256 与仓库副本对账）；干净 clone 双解释器 159+2 全绿 + `pip install .` 装机态双通路冒烟过；留档三件套 docs/RELEASE-M6.md。**修正轮**：附件溯源如实回写（真实来源 = M1 活网捕获 400 条）、tag 在修正提交重打（RELEASE-M6 入 tag 树、README 转正）、CI 修正轮 run id 见 RELEASE-M6 §五） |
 
 ## 里程碑依赖与验收要点
 
@@ -79,8 +80,12 @@
   `gh run list` 对账 push 数 = run 数逐条配对（首推 1=1；终态 3 push ↔ 3 run 全 success，
   tag push 亦触发 push 工作流——实测口径见 docs/RELEASE-M6.md §〇终态补记）；CI 未覆盖 ubuntu-24.04 等其他 runner 环境
   （矩阵按 plan/02 定稿口径执行，不扩）；
-- **Release 附件为离线受控样本日报**（由预置快照对 R1 经 snapshot→diff→report
-  生成，合成样本口径同 data/README §五；MD+HTML 双格式，HTML 零外链），
-  非活网变更产物；M6 未跑活网 run（沿用 M2 活网取证谨慎限频纪律）；
+- **Release 附件为 M1 活网捕获 400 条真实标准的产物**（真实来源修正，2026-10-16 如实回写）：
+  附件 = 把 `data/snapshots/raw/`（M1 活网捕获 4 页 400 条真实标准）灌入 store 后经
+  snapshot→diff→report 生成的日报（MD+HTML）——362 条"即将实施"倒计时条目
+  （GB 200 + HB 162），除"基准日期/剩余天数"外逐行与附件一致（实测复现）。
+  **勘误**：原留档称附件为"预置快照对 R1 生成的合成样本日报"为不实溯源（R1 合成快照仅
+  4 条"合成样本"条目，附件含 362 条真实标准条目且"合成样本"字样 0 次）；合成纪律边界与
+  sha256 对账见 docs/RELEASE-M6.md §四。附件仅含标准元数据，符合"不下载全文"合规红线；
 - 推送通路实测备注：本机 github.com:443 对 git-over-https 间歇阻断（api.github.com
   与 SSH 22 正常），remote 采用 SSH 推送；此为本机环境事实，非仓库问题。

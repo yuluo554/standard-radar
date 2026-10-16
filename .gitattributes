@@ -11,3 +11,7 @@
 # ② 冻结数据半区（M1 落位的资产）：字节不可变（sha256 台账复算），EOL 归一会破坏字节
 data/snapshots/** -text
 data/fixtures/** -text
+
+# ③ Release 附件留档半区（M6 修正补留）：与 GitHub Release 已上传附件**字节一致**的副本，
+#    字节不可变（sha256 与 Release 资产 digest 对账），EOL 归一/重排会破坏该对账
+docs/release-assets/** -text

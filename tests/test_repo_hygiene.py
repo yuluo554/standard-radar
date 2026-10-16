@@ -12,7 +12,9 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 
 # 允许 CRLF 的半区（冻结数据；字节层面有独立台账纪律）
-FROZEN_PREFIXES = ("data/snapshots/", "data/fixtures/")
+# docs/release-assets/** = Release 附件留档副本（字节须与 GitHub Release 资产一致，
+# 本地生成时随 Windows 环境带 CRLF，见 docs/RELEASE-M6.md §五 sha256 对账）
+FROZEN_PREFIXES = ("data/snapshots/", "data/fixtures/", "docs/release-assets/")
 # 允许 CRLF 的文件（Windows 生态固有的）
 ALLOWED_FILES = {".gitattributes"}
 # 排除目录（构建产物/缓存/运行态）
@@ -62,5 +64,25 @@ def test_no_cr_in_text_files():
 def test_gitattributes_freeze_half_in_place():
     """冻结半区规则必须在位（防误删 .gitattributes 的 -text 段）。"""
     attrs = (REPO / ".gitattributes").read_text(encoding="utf-8")
-    for line in ("data/snapshots/** -text", "data/fixtures/** -text"):
+    for line in ("data/snapshots/** -text", "data/fixtures/** -text",
+                 "docs/release-assets/** -text"):
         assert line in attrs, "缺少冻结半区规则: " + line
+
+
+# Release 附件留档副本 sha256（M6 修正补留；与 GitHub Release 资产 digest 逐字节对账，
+# 见 docs/RELEASE-M6.md §四）。冻结半区：字节不可变（.gitattributes -text）。
+RELEASE_ASSETS_SHA256 = {
+    "standard-report.md": "5df98ebf0351678c00f23871c5799fefaffde67c54085f8185936eb5e3ca8fe6",
+    "standard-report.html": "5fa97ea601ccb7b01aff44530292691cb35b2ee784b0b0dbd1d830f28b91eeaa",
+}
+
+
+def test_release_assets_bytes_frozen_sha256():
+    """Release 附件留档副本 sha256 冻结守门（防副本漂移使 §四对账失效）。"""
+    import hashlib
+    for name, expected in RELEASE_ASSETS_SHA256.items():
+        path = REPO / "docs" / "release-assets" / name
+        assert path.is_file(), "Release 附件副本缺失: %s" % name
+        actual = hashlib.sha256(path.read_bytes()).hexdigest()
+        assert actual == expected, "副本 sha256 漂移: %s（台账=%s 实算=%s）" % (
+            name, expected[:12], actual[:12])

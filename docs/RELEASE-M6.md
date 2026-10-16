@@ -15,9 +15,13 @@
   触发 push 工作流（tag 指向的提交已在 main 上绿过）；本文档自身提交再触发的 run 属发布
   后续运转，对账口径恒为 push 数 = run 数逐条配对，实时以 `gh run list` 为准；
 - tag：`v1.0.0`（annotated，打在 CI 绿的同一提交 349ef90 上）；
+  **M6 修正补记（2026-10-16）**：旧 tag 打在 M5 提交 349ef90 上，其树内 README 仍
+  "发布对接 M6"、plan/00 M6 台账 ⬜、`docs/RELEASE-M6.md` 不在 tag 树内（发布事实与 tag
+  树矛盾）→ 本轮回填完成后**删旧 tag、在最终修正提交重打 `v1.0.0`**（RELEASE-M6 入 tag
+  树、README 为已发布态；旧 tag 的 CI run 38742787252 保留为历史记录）；
 - Release：https://github.com/yuluo554/standard-radar/releases/tag/v1.0.0
   （附件 standard-report.md 44716 B + standard-report.html 63938 B，
-  `gh release view --json assets` 核验两资产在位）；
+  `gh release view --json assets` 核验两资产在位；sha256 digest 对账与副本留档见 §四）；
 - 推送通路备注：本机 github.com:443 间歇阻断（git over https 超时；api.github.com 与
   SSH 22 正常）→ remote 改 SSH（`git@github.com:yuluo554/standard-radar.git`）后推送
   成功；仓库由 `gh repo create yuluo554/standard-radar --public --source . --push` 创建
@@ -35,7 +39,7 @@ docs、src、tests、tools、CI 配置）。
 | ③ 品牌隔离 | 姊妹项目业务词（项目内定假词口径）`grep -rniE "kongque\|孔雀" --include="*.py\|*.md"` → 0 命中；姊妹项目名不入任何文档 | ✅ 隔离成立 |
 | ④ 敏感元数据 | `git log --format='%an <%ae>' \| sort -u` → 唯一 `yuluo554 <yuluo554@users.noreply.github.com>`（noreply 匿名邮箱）；提交正文无邮箱/密钥/内网地址 | ✅ 元数据干净 |
 | 产物扫描 | `git ls-files \| grep -iE "reports/\|\.log$\|__pycache__\|\.pyc\|store/"` → 0 命中（reports/、stdradar_store/、cache/、_private/、*.db 等运行态产物全部在 .gitignore 且未入库）；Release 附件扫描：`grep -c "ASUS\|AppData\|Temp\|m6rel\|C:"` 双文件均 0 命中，HTML 外链 grep http 计数 0 | ✅ 无产物泄漏 |
-| 附加 | data 冻结区标准号/名称均为真实格式占位合成样本（`kind=synthetic`，data/README §五合成纪律），样例日报页脚免责声明在位（MD+HTML 双格式） | ✅ |
+| 附加 | data 冻结区**合成半区**（`snapshots/pairs/`、`fixtures/`）标准号/名称均为真实格式占位合成样本（`kind=synthetic`，data/README §五合成纪律）；样例日报页脚免责声明在位（MD+HTML 双格式）；**Release 附件为 M1 活网捕获 400 条真实标准的产物（非合成）**——溯源修正见 §四 | ✅ |
 
 ## 二、发布检查单（M6 DoD 逐项）
 
@@ -70,7 +74,75 @@ clone 源：本地仓库（`git clone <本仓库> /tmp/clone-check`，HEAD = 349
 
 装机态 pytest 未随 `.` 依赖装入（dev extra 才带 pytest，属预期；CI 用 `.[dev]` 路径跑全量）。
 
-## 四、收尾提交
+## 四、Release 附件溯源修正与 sha256 对账（M6 修正如实回写，2026-10-16）
+
+**修正事由**：原留档（本文件 §一"附加"行、plan/06 决策记录、plan/00 尾注）称 Release
+附件为"由预置快照对 R1 经 snapshot→diff→report 生成的离线受控样本日报（合成样本）"——
+**实测证伪**。复核（2026-10-16）结论如下：
+
+| 复核项 | 实测 | 与"合成样本 R1"口径对照 |
+|---|---|---|
+| 附件 `standard-report.md` 数据行 | **362 条**倒计时条目 | R1 合成快照仅 **4 条**"合成样本"条目 → 不符 |
+| 附件中"合成样本"字样出现次数 | **0 次** | 合成样本口径应满篇"合成样本"前缀 → 不符 |
+| 附件条目内容 | 全为**真实标准号与名称**（如 `YB/T 6499-2026 高炉热风炉冷态流场均匀性测定与计算方法`、`GB/T 48222-2026` 等） | 合成纪律要求名称冠"合成样本"前缀 → 不符 |
+| 附件来源库分布 | HB 162 + GB 200 = 362（全 `state=即将实施`） | M1 活网捕获 400 条（GB 200 + HB 200）中"即将实施"恰为 GB 200 + HB 162 = 362 → **精确吻合** |
+
+**真实来源复现（逐行级证据）**：把 M1 活网捕获的 `data/snapshots/raw/`（4 页 400 条真实标准）
+灌入空 store 后执行 `snapshot`（400 条全映射成功）→ `report`，产出的日报与 Release 附件
+**逐行一致，唯一差异是"基准日期"（附件 2026-10-15 vs 复现当日）与由它派生的"剩余天数"
+列（如 109 vs 108）**；362 条倒计时条目与来源库分布完全一致。故附件的真实来源是
+**M1 活网捕获的 400 条真实标准**，而非合成 R1。
+
+**合成纪律边界判定（是否触及白名单）**：
+- `data/README §四/§五` 合成纪律管辖对象是**"声称合成的资产"**与**真值标注**——禁止虚构
+  真实标准号↔名称↔日期的对应关系、禁止把推断值冒充标注真值；
+- 附件是**真实捕获产物**（非合成资产），如实标注其真实来源即**不触及**该纪律；
+  此前误标为"合成样本"反而**违反**纪律精神（把真实数据冒充合成，且使留档与实物不符）；
+- 合规红线核对：附件仅含标准**元数据**（标准号/名称/状态/日期/来源库），不含标准全文、
+  非详情页镜像，符合"仅元数据"边界。
+
+**处置（选方案①：承认真实捕获产物）**：留档三处（本文件 §一"附加"行、plan/06 决策记录、
+plan/00 尾注）已改为如实描述真实来源与口径；**不重做合成样本附件**（真实数据更贴合
+"活网捕获产物"的交付事实，且重做反而抹去真实证据）。
+
+**附件 sha256 对账（“留副本 + sha256 留档”）**：仓库内 `docs/release-assets/` 存与 GitHub
+Release 已上传附件**字节一致**的副本（`.gitattributes` 标 `-text` 冻结），sha256 与 Release
+资产 digest 逐一对账：
+
+| 附件 | 仓库副本路径 | 本地 sha256（复算） | GitHub Release 资产 digest | 对账 |
+|---|---|---|---|---|
+| standard-report.md | `docs/release-assets/standard-report.md` | `5df98ebf0351678c00f23871c5799fefaffde67c54085f8185936eb5e3ca8fe6` | `sha256:5df98ebf0351678c00f23871c5799fefaffde67c54085f8185936eb5e3ca8fe6` | ✅ 一致 |
+| standard-report.html | `docs/release-assets/standard-report.html` | `5fa97ea601ccb7b01aff44530292691cb35b2ee784b0b0dbd1d830f28b91eeaa` | `sha256:5fa97ea601ccb7b01aff44530292691cb35b2ee784b0b0dbd1d830f28b91eeaa` | ✅ 一致 |
+
+（复算命令：`sha256sum docs/release-assets/*`；Release digest 来源：`gh release view v1.0.0
+--json assets`。字节一致 → 重打 tag 后**无需重传附件**，见 §〇 M6 修正补记。）
+
+## 五、M6 修正补记（2026-10-16，审计缺陷修复轮）
+
+本轮修复审计发现的交付缺陷，逐条改动与验证见下列提交；此处留档发布相关终态。
+
+- **缺陷1（招牌功能交付态空转）**：`cli diff/run` 默认只比最近两轮且每次新建
+  `MissingTracker` → disappeared 永不确认。修复为**交付态全序列重放**（从 R1 起逐相邻轮
+  续接、同一 tracker 跨轮累积去抖计数）；CLI 级失败测试先红后绿（`test_m3_pipeline`
+  三轮 disappeared、`test_m5_run` run 三轮消失分组非空）。
+- **缺陷2（状态迁移模块孤岛）**：`states.state_transitions` 从未接入管线 → 日报"状态迁移"
+  分组恒空。修复：`cli diff` 追加调 `states.state_transitions` 产 `state_transition` 事件；
+  `report` 呈现层择一（口径收敛入 plan/03 §2.3 + tech-report §4）。
+- **缺陷3（附件溯源不实）**：见 §四（如实回写真实来源 + 副本 sha256 对账）。
+- **缺陷4（tag 树与发布事实矛盾）**：旧 tag `v1.0.0` 打在 M5 提交 `349ef90`（README 仍
+  "发布对接 M6"、plan/00 M6 台账 ⬜、`docs/RELEASE-M6.md` 不在 tag 树内）。修复：本轮
+  全部回填完成后删旧 tag、在最终提交重打 `v1.0.0`（RELEASE-M6 入 tag 树、README 已发布态）。
+- **缺陷5（REASON_MAPPING 死常量）**：转活产出码（`SourceResult.reason_codes()`）。
+- **缺陷6（plan/06 标题编号重复）**：第二个"## 六"改为"## 七"。
+- **缺陷7（CLI 集成断言缺失）**：补 disappeared/state_transition 的 CLI/run 级断言。
+- **缺陷8（台账缺数据底座条数项）**：plan/00 承诺-证据台账补"数据底座可获取性（条数证据）"
+  一行，绑定 GB total=79826 / HB total=119169 / 400 条核对基线。
+
+**终态**：双解释器 169 passed + 2 skipped；`tools/benchmark.py --check` 17/17 检出 100%/
+误报 0；`verify_ledger.py` 14 资产一致；`gen_snapshot_pairs.py --check` 6 文件位级一致；
+离线端到端 `run` 全链三连跑五分组齐。CI 四矩阵真实 run id 见 §〇 修正补记。
+
+## 六、收尾提交
 
 M6 回写（plan/00·05·06 + README 状态行 + 本文件）单 commit 追加 push；提交信息与内容见
 该提交本体。此后项目进入"首期已发布"维护态。
