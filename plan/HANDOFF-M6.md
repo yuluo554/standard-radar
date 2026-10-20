@@ -36,9 +36,10 @@
   K16 幂等（重复 diff 事件流有重复行 + 报告逐字节稳定 + 前置断言）/ dedupe_events
   纯函数 / build_report_model 消费去重 / 两库全败中止不产日报 exit 1 / 样例订阅规则
   透传 / 坏订阅规则 exit 1；test_cli_contract.py 桩表清空（2 处改写）；
-- **双解释器全绿（收尾实测，源码态）**：`py -3.8` → **159 passed, 2 skipped**；
-  `py -3.12` → **159 passed, 2 skipped**（M4 基线 153 + M5 新增 8 − 桩表改写 2；
-  skip 项数随安装态浮动，勿抄本文数字）；
+- **双解释器全绿（末态实测，源码态）**：`py -3.8` → **170 passed, 2 skipped**；
+  `py -3.12` → **170 passed, 2 skipped**（M4 基线 153 + M5 新增 8 − 桩表改写 2 = M5 当时的 159；
+  M6 修正轮缺陷修复再 +11 → 170；skip 项数随安装态浮动，勿抄本文数字；
+  `tests/test_doc_counts.py` 把本行与 plan/00 M5 行的数字钉成守门：本行数字不含该守门自身 2 项）；
 - **数据守门**：`gen_snapshot_pairs.py --check` 6 文件位级一致；`verify_ledger.py`
   14 资产复算一致（M5 未改任何冻结资产）；基准守门 `tools/benchmark.py --check`
   exit 0（检出率 100% 误报 0）；
