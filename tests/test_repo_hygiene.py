@@ -17,8 +17,12 @@ REPO = Path(__file__).resolve().parents[1]
 FROZEN_PREFIXES = ("data/snapshots/", "data/fixtures/", "docs/release-assets/")
 # 允许 CRLF 的文件（Windows 生态固有的）
 ALLOWED_FILES = {".gitattributes"}
+# setuptools 打包时生成的元数据文件（非本仓编写，行尾由打包器在 Windows 下写成 CRLF）。
+# 仓库根本身没有这两个文件；它们只出现在**从 sdist 解包后的目录**里——
+# 不豁免它们，「下载 sdist → pytest」这条用户路径会在本测试上假红。
+GENERATED_METADATA_FILES = {"PKG-INFO", "setup.cfg"}
 # 排除目录（构建产物/缓存/运行态）
-SKIP_DIRS = {".git", "__pycache__", ".pytest_cache", ".venv", "stdradar_store", "reports", "logs", ".idea", ".vscode"}
+SKIP_DIRS = {".git", "__pycache__", ".pytest_cache", ".venv", "stdradar_store", "reports", "logs", ".idea", ".vscode", "build", "dist"}
 # 排除的文件名模式（构建产物）
 SKIP_PATTERNS = ("egg-info",)
 
@@ -33,6 +37,8 @@ def _tracked_or_working_files():
 
 def _skip(rel: str) -> bool:
     if rel in ALLOWED_FILES:
+        return True
+    if rel in GENERATED_METADATA_FILES:
         return True
     if rel.startswith(FROZEN_PREFIXES):
         return True

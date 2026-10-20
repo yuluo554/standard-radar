@@ -4,7 +4,7 @@
 
 面向企业合规、研发、质量、采购、投标人员：标准决定产品准入 / 投标资格 / 检测依据，人工翻官网极易漏。
 
-**状态**：✅ v1.0.0 已发布（[Release v1.0.0](https://github.com/yuluo554/standard-radar/releases/tag/v1.0.0)，M0–M6 首期交付：计划/数据/抓取/管线/日报/全链路/发布，见 [plan/05-里程碑.md](plan/05-里程碑.md)；CI 四矩阵全绿）。
+**状态**：✅ v1.0.1 已发布（[Release v1.0.1](https://github.com/yuluo554/standard-radar/releases/tag/v1.0.1)，M0–M6 首期交付：计划/数据/抓取/管线/日报/全链路/发布，见 [plan/05-里程碑.md](plan/05-里程碑.md)；CI 四矩阵全绿；变更历史见 [CHANGELOG.md](CHANGELOG.md)）。
 
 ## 特性（按里程碑交付）
 
@@ -47,7 +47,7 @@ py -3.8 -X utf8 tools/benchmark.py --check    # 守门：检出率 100% 且误�
 
 ```bash
 # 需要 Python >= 3.8（无任何第三方运行时依赖）
-pip install .                      # 或不安装直接 python -m（源码态自举）
+pip install -e .                   # 或不安装直接 python -m（源码态自举）
 
 python -m standard_radar selftest  # 环境自检
 

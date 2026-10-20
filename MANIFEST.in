@@ -1,0 +1,26 @@
+# 源码分发包（sdist）内容清单。
+#
+# 目标：sdist 解包后是**能自证的源码检出**——自带测试与真值基准所需的数据都在包里
+# （否则 `pytest`/`tools/benchmark.py` 在 sdist 里因缺 data/ 直接报错）。
+# 不含运行态产物（stdradar_store/、reports/）与构建产物（build/、*.egg-info/）。
+include LICENSE
+include README.md
+include CHANGELOG.md
+include .gitattributes
+include .gitignore
+
+recursive-include src/standard_radar *.py
+recursive-include data *
+recursive-include tools *.py
+recursive-include tests *.py
+recursive-include docs *.md *.html
+recursive-include plan *.md
+recursive-include .github *.yml
+
+# 运行态 / 构建产物：明确排除（防误入包）
+prune stdradar_store
+prune reports
+prune build
+prune update
+global-exclude *.py[cod]
+global-exclude __pycache__/*
