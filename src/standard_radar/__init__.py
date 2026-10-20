@@ -3,6 +3,6 @@
 版本号为本包单一来源（打包元数据动态读取本值，见 pyproject.toml）。
 """
 
-__version__ = "0.1.0.dev0"
+__version__ = "1.0.1"
 
 __all__ = ["__version__"]
