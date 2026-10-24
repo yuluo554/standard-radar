@@ -22,7 +22,7 @@
 
 - **CI**：`actions/checkout` `v4`→`v7`、`actions/setup-python` `v5`→`v7`（两者均为 `node24` 运行时）；
   新增 `permissions: contents: read` 与 `concurrency`（同 ref 新推送取消旧运行）。
-  `runs-on` 仍显式钉 `ubuntu-22.04`（本仓主动规避 Ubuntu 26 迁移，非疏漏）。
+  `runs-on` 显式钉 `ubuntu-24.04`（本仓主动规避 `ubuntu-latest` 随 Ubuntu 26 迁移，非疏漏）。
 - **元数据**：删除 classifiers 里的 `License :: OSI Approved :: MIT License`（setuptools 已弃用该写法）。
 
 ### 新增
